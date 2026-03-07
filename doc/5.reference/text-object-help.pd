@@ -1,5 +1,5 @@
-#N struct text-struct float x float y text z;
 #N canvas 501 59 541 585 12;
+#N struct text-struct float x float y text z;
 #X obj 92 552 list;
 #X obj 29 16 text;
 #X text 15 552 see also:;
@@ -25,7 +25,7 @@
 #X obj 103 730 print;
 #X obj 103 705 list trim;
 #X obj 103 517 text define -k text-1;
-#A set 1 2 \, 3 \; 4 5 \, 6 \;;
+#A set 1 2 \, 3 \; 4 5\\\, 6 \;;
 #X msg 118 310 write -c /tmp/test-cr.txt;
 #X obj 248 597 print notify-outlet;
 #X text 161 339 bang to output a pointer to a scalar (struct) containing the text - see first outlet below, f 45;
@@ -868,7 +868,6 @@
 #X text 102 24 A simple example showing how to access text in data structures via pointers. In this case you need the "-s" flag followed by the struct name and text field., f 46;
 #X msg 277 143 list a b c;
 #X msg 286 171 10 20 300;
-#X text 81 352 To know more about Data Structures \, how to handle pointers and see examples \, please refer to the 4.Data.Structure section of the Pd's tutorials., f 50;
 #X obj 454 342 bng 19 250 50 0 empty empty empty 17 7 0 10 #dfdfdf #000000 #000000;
 #N canvas 491 316 412 249 open 0;
 #X obj 58 49 inlet;
@@ -882,6 +881,7 @@
 #X text 486 334 open first example of the 4.Data.Structure section., f 25;
 #X obj 82 288 print line;
 #X text 560 30 <= open to see scalar;
+#X text 81 352 To know more about Data Structures \, how to handle pointers and see examples \, please refer to the 4.data.structures section of the Pd tutorials., f 50;
 #X connect 0 0 6 0;
 #X connect 1 0 0 0;
 #X connect 2 0 0 0;
@@ -895,13 +895,13 @@
 #X connect 13 0 12 0;
 #X connect 14 0 12 0;
 #X connect 15 0 12 0;
-#X connect 16 0 30 0;
+#X connect 16 0 29 0;
 #X connect 17 0 4 0;
 #X connect 20 0 11 0;
 #X connect 22 0 9 0;
 #X connect 24 0 20 0;
 #X connect 25 0 20 0;
-#X connect 27 0 28 0;
+#X connect 26 0 27 0;
 #X restore 261 501 pd text-and-data-structures;
 #X obj 5 55 cnv 1 525 1 empty empty empty 8 12 0 13 #000000 #000000 0;
 #X text 456 16 <= click;
