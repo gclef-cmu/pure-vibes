@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=Pure Data (Pd)
+Name=Pure Vibes (Pd-vibes)
 Exec=pd-gui %F
 Categories=Audio;AudioVideo;Development;Music;Graphics
 Keywords=Audio;Video;Programming;Synthesis;Analysis

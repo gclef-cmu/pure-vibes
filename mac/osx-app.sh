@@ -291,10 +291,10 @@ done
 
 # check for version argument and set app path in the dir the script is run from
 if [ "$1" != "" ] ; then
-    APP="$(pwd)/Pd-${1}.app"
+    APP="$(pwd)/Pd-vibes-${1}.app"
 else
     # version not specified
-    APP="$(pwd)/Pd.app"
+    APP="$(pwd)/Pd-vibes.app"
 fi
 
 # Go

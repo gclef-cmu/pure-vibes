@@ -1,63 +1,176 @@
-# Pure Data
+# Pure Vibes (Pd-vibes)
 
-This is the README file for Pd, a free real-time computer music system.
+**Pure Vibes is an unofficial, experimental fork of [Pure Data](https://puredata.info) (Pd 0.56.2) with a native MCP server built in.** It is vibe-coded and intended for experimental use only. It is not affiliated with or endorsed by Miller Puckette or the Pure Data community.
 
-## Getting Pd
+Pure Vibes lets AI agents (Claude, ChatGPT, etc.) read, create, and manipulate Pd patches in real time through the [Model Context Protocol](https://modelcontextprotocol.io). You install it, check the "MCP" box, and point your AI app at it. No Python, no Node, no bridge patches.
 
-You can get Pd for Linux, macOS, or Microsoft Windows from:
+---
 
-    http://msp.ucsd.edu/software.html
+## Quick Start (for musicians)
 
-or from the Pure Data community site:
+### 1. Install Pd-vibes
 
-    https://puredata.info
+Download the latest release for your platform from the **[Releases](../../releases)** tab:
 
-Installation instructions are in INSTALL.txt and the Pd Manual at:
+- **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications
+- **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `pd.exe`
+- **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd`
 
-    http://msp.ucsd.edu/Pd_documentation/index.htm
+Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP). It is enabled by default, listening on port 4330.
 
-If you download and unpack Pd, you will also find the Manual locally
-in the file "doc/1.manual/index.htm".
+### 2. Connect to Claude Desktop
 
-Linux (or FreeBSD): In some Linux installations you can download Pd via "apt-get
-install puredata" or "dnf install puredata"; otherwise you can download
-the source and compile it as described in INSTALL.txt.
+Add this to your Claude Desktop config file:
 
-Apple macOS: Pd binaries are distributed as a "tar.gz" file. The web browser
-will probably download this archive into your Downloads folder. Double click
-to extract the archived Mac app which you can then run and/or drag into your
-Applications folder.
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Microsoft Windows: Pd binaries are distributed as a self-extracting executable
-or as a "zip" file.
+```json
+{
+  "mcpServers": {
+    "pure-vibes": {
+      "url": "http://localhost:4330/mcp"
+    }
+  }
+}
+```
 
-If you have questions about Pd or if you wish to be notified of releases,
-you can browse and/or join the Pd mailing list:
+Restart Claude Desktop. Pure Vibes should appear as a connected MCP server.
 
-    https://lists.puredata.info/listinfo
+### 3. Try it out
 
-Many extensions to Pd are available, for instance to add video and 3D graphics.
-The easiest way to get these is to use the "Find externals" command in Pd's Help
-menu.
+Open a new patch in Pd-vibes (Cmd+N / Ctrl+N), then ask Claude:
 
-## Copyright
+> "Build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
 
-Except as otherwise noted, all files in the Pd distribution are
+Claude will use the MCP tools to create objects, wire them together, and you will see the patch build itself in real time.
+
+Other things to try:
+
+> "What patches do I have open?"
+
+> "Turn on DSP"
+
+> "Add a reverb to my patch"
+
+### 4. Connect to ChatGPT Desktop (or other MCP clients)
+
+Any MCP client that supports the Streamable HTTP transport can connect. Point it at:
+
+    http://localhost:4330/mcp
+
+---
+
+## MCP Configuration
+
+- **Toggle**: Check/uncheck "MCP" in the main Pd window, or use the Media menu
+- **Port**: Media > MCP Port... (default: 4330). CLI: `-mcpport 4331`
+- **Network**: Media > MCP Allow Network (default: localhost only). CLI: `-mcpnetwork`
+- **Disable**: Uncheck "MCP" or start with `-nomcp`
+
+---
+
+## Building from Source
+
+### macOS (arm64 / x86_64)
+
+Install Xcode command line tools and Homebrew, then:
+
+```sh
+brew install autoconf automake libtool gettext
+LIBTOOLIZE=$(brew --prefix libtool)/bin/glibtoolize ./autogen.sh
+./configure
+make -j$(sysctl -n hw.logicalcpu)
+```
+
+To create an app bundle:
+
+```sh
+make app
+# Creates Pd-vibes-0.56.2.app in the build directory
+```
+
+### Linux (Debian/Ubuntu)
+
+```sh
+sudo apt-get install autoconf automake libtool gettext \
+    libasound2-dev libjack-jackd2-dev tcl-dev tk-dev
+./autogen.sh
+./configure
+make -j$(nproc)
+sudo make install
+```
+
+### Windows (MSYS2)
+
+Install [MSYS2](https://www.msys2.org), open a MINGW64 shell, then:
+
+```sh
+pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-autotools make autoconf automake libtool
+./autogen.sh
+./configure
+make -j$(nproc)
+```
+
+For more detailed build instructions, see INSTALL.txt.
+
+---
+
+## What the MCP Server Can Do
+
+The built-in MCP server exposes 19 tools:
+
+| Category | Tools |
+|----------|-------|
+| Patches | `list_patches`, `get_patch_state`, `open_patch` |
+| Objects | `create_object`, `delete_object`, `modify_object`, `move_object` |
+| Connections | `connect`, `disconnect` |
+| Batch | `batch_update`, `clear_patch` |
+| Runtime | `send_message`, `send_bang`, `set_number` |
+| DSP | `set_dsp`, `get_dsp_state` |
+| Selection | `get_selection` |
+| Docs | `list_externals`, `get_object_doc` |
+
+---
+
+## About Pure Data
+
+Pure Data (Pd) is a free, open-source visual programming language for multimedia,
+created by Miller Puckette. For information about vanilla Pd, visit:
+
+- https://puredata.info
+- http://msp.ucsd.edu/software.html
+
+---
+
+## Copyright & Licensing
+
+### Pure Data
+
+Except as otherwise noted, all files in the Pd distribution are:
 
     Copyright (c) 1997-2024 Miller Puckette and others.
 
-For information on usage and redistribution, and for a DISCLAIMER OF ALL
-WARRANTIES, see LICENSE.txt included in the Pd distribution.
-(Note that Tcl/Tk, expr, and some other files are copyrighted separately).
+Licensed under the **BSD 3-Clause License**. See LICENSE.txt for details.
 
-## Acknowledgements
+### cJSON (embedded JSON library)
 
-Thanks to Harry Castle, Krzysztof Czaja, Mark Danks, Christian Feldbauer,
-Guenter Geiger, Kerry Hagan, Trevor Johnson, Fernando Lopez-Lezcano, Adam
-Lindsay, Karl MacMillan, Thomas Musil, Toshinori Ohkouchi, Winfried Ritsch,
-Vibeke Sorensen, Rand Steiger, Hans-Christoph Steiner, Shahrokh Yadegari, Dan
-Wilcox, David Zicarelli, IOhannes m zmoelnig, Christof Ressi, Antoine Rousseau,
-Alexandre Torres Porres, Claude Heiland-Allen, Roman Haefeli, Lucarda, Chris
-McCormick, Seb Shader and probably many others for contributions of code,
-documentation, ideas, and expertise. This work has received support from Intel,
-Keith McMillen Instruments, ZKM, IEM, and UCSD.
+The files `src/s_mcp_cjson.c` and `src/s_mcp_cjson.h` are from the
+[cJSON](https://github.com/DaveGamble/cJSON) project (v1.7.18):
+
+    Copyright (c) 2009-2017 Dave Gamble and cJSON contributors.
+
+Licensed under the **MIT License**. The full license text is included at the
+top of each file.
+
+### MCP Server Code
+
+The files `src/s_mcp.c` and `src/s_mcp.h` are new additions to this fork,
+written for the Pure Vibes project. They are released under the same
+**BSD 3-Clause License** as the rest of Pure Data.
+
+### Compatibility
+
+The BSD 3-Clause (Pd) and MIT (cJSON) licenses are fully compatible.
+Both are permissive open-source licenses that allow free use, modification,
+and redistribution.

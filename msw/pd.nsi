@@ -33,18 +33,18 @@ Unicode True
 ; App name
 !if ${PDEXE} == "pd.exe"
     !if ${ARCHI} == "64"
-        !define PRODUCT_NAME "Pure Data"
+        !define PRODUCT_NAME "Pure Vibes"
     !else
-        !define PRODUCT_NAME "Pure Data (${ARCHI}-bit)"
+        !define PRODUCT_NAME "Pure Vibes (${ARCHI}-bit)"
     !endif
-    !define PD_FOLDER "Pd"
+    !define PD_FOLDER "Pd-vibes"
 !else
     !if ${ARCHI} == "64"
-        !define PRODUCT_NAME "Pd64"
+        !define PRODUCT_NAME "Pd-vibes64"
     !else
-        !define PRODUCT_NAME "Pd64 (${ARCHI}-bit)"
+        !define PRODUCT_NAME "Pd-vibes64 (${ARCHI}-bit)"
     !endif
-    !define PD_FOLDER "Pd64"
+    !define PD_FOLDER "Pd-vibes64"
 !endif
 !define PRODUCT_VERSION "${PDVER}"
 !define WISH_NAME "${WISHN}"

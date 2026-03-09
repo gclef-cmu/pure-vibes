@@ -1,16 +1,146 @@
-name: pure-data
+name: Build Release
 
+# Build and publish release artifacts when a version tag is pushed.
+# To create a release: git tag v0.56.2-vibes.1 && git push origin v0.56.2-vibes.1
 on:
-  # Trigger the workflow on push or pull request,
-  # but only for the main branch
   push:
-    branches:
-      - main
-      - master
-      - develop
-  pull_request:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  puredata:
-    uses: pure-data/pure-data-ci/.github/workflows/puredata.yml@main
+
+  # ── macOS (Universal: arm64 + x86_64) ──────────────────────────
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew install autoconf automake libtool gettext
+          brew link gettext --force
+
+      - name: Build
+        run: |
+          LIBTOOLIZE=$(brew --prefix libtool)/bin/glibtoolize ./autogen.sh
+          ./configure
+          make -j$(sysctl -n hw.logicalcpu)
+
+      - name: Create app bundle
+        working-directory: .
+        run: |
+          cd mac
+          sh osx-app.sh --builddir $(pwd)/.. $(cat ../configure.ac | grep AC_INIT | sed 's/.*\[//;s/\].*//')
+          cd ..
+          # Find the .app bundle
+          APP=$(ls -d mac/Pd-vibes*.app 2>/dev/null || ls -d Pd-vibes*.app 2>/dev/null)
+          if [ -z "$APP" ]; then echo "No app bundle found"; exit 1; fi
+          # Create a zip for distribution
+          ditto -c -k --sequesterRsrc --keepParent "$APP" Pd-vibes-macos.zip
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pd-vibes-macos
+          path: Pd-vibes-macos.zip
+
+  # ── Linux (x86_64) ─────────────────────────────────────────────
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool gettext \
+            libasound2-dev libjack-jackd2-dev tcl-dev tk-dev
+
+      - name: Build
+        run: |
+          ./autogen.sh
+          ./configure --prefix=/usr
+          make -j$(nproc)
+
+      - name: Package
+        run: |
+          make DESTDIR=$(pwd)/pkg install
+          tar czf Pd-vibes-linux-x86_64.tar.gz -C pkg .
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pd-vibes-linux-x86_64
+          path: Pd-vibes-linux-x86_64.tar.gz
+
+  # ── Windows (MSYS2 / MinGW-w64) ────────────────────────────────
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-autotools
+            mingw-w64-x86_64-gettext
+            make
+            autoconf
+            automake
+            libtool
+            gettext-devel
+
+      - name: Build
+        run: |
+          ./autogen.sh
+          ./configure
+          make -j$(nproc)
+
+      - name: Package
+        run: |
+          make DESTDIR=$(pwd)/pkg install
+          cd pkg
+          tar czf ../Pd-vibes-windows-x86_64.tar.gz .
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pd-vibes-windows-x86_64
+          path: Pd-vibes-windows-x86_64.tar.gz
+
+  # ── Create GitHub Release ──────────────────────────────────────
+  release:
+    needs: [macos, linux, windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            artifacts/Pd-vibes-macos/Pd-vibes-macos.zip
+            artifacts/Pd-vibes-linux-x86_64/Pd-vibes-linux-x86_64.tar.gz
+            artifacts/Pd-vibes-windows-x86_64/Pd-vibes-windows-x86_64.tar.gz

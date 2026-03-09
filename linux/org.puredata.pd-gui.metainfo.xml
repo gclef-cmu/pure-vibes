@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>org.puredata.pd-gui</id>
-  <name>Pure Data (Pd)</name>
+  <name>Pure Vibes (Pd-vibes)</name>
   <developer_name>Miller S. Puckette et al.</developer_name>
 
   <summary>realtime computer music system</summary>
