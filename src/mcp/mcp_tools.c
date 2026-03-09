@@ -70,7 +70,7 @@ cJSON *mcp_build_tools_list(void)
     cJSON *tools = cJSON_CreateArray();
     cJSON *tool, *schema;
 
-    /* 1. list_patches */
+    /* list_patches */
     tool = cJSON_CreateObject();
     cJSON_AddStringToObject(tool, "name", "list_patches");
     cJSON_AddStringToObject(tool, "description",
@@ -80,7 +80,7 @@ cJSON *mcp_build_tools_list(void)
     cJSON_AddItemToObject(tool, "inputSchema", schema);
     cJSON_AddItemToArray(tools, tool);
 
-    /* 2. get_patch_state */
+    /* get_patch_state */
     {
         const char *req[] = {"patch_id"};
         tool = cJSON_CreateObject();
@@ -95,7 +95,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 3. create_object */
+    /* create_object */
     {
         const char *req[] = {"patch_id", "type", "x", "y"};
         tool = cJSON_CreateObject();
@@ -120,7 +120,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 4. delete_object */
+    /* delete_object */
     {
         const char *req[] = {"patch_id", "object_id"};
         tool = cJSON_CreateObject();
@@ -136,7 +136,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 5. modify_object */
+    /* modify_object */
     {
         const char *req[] = {"patch_id", "object_id", "text"};
         tool = cJSON_CreateObject();
@@ -154,7 +154,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 6. move_object */
+    /* move_object */
     {
         const char *req[] = {"patch_id", "object_id", "x", "y"};
         tool = cJSON_CreateObject();
@@ -174,7 +174,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 7. connect */
+    /* connect */
     {
         const char *req[] = {"patch_id", "src_id", "outlet", "dst_id",
             "inlet"};
@@ -197,7 +197,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 8. disconnect */
+    /* disconnect */
     {
         const char *req[] = {"patch_id", "src_id", "outlet", "dst_id",
             "inlet"};
@@ -220,7 +220,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 9. batch_update */
+    /* batch_update */
     {
         const char *req[] = {"patch_id", "operations"};
         tool = cJSON_CreateObject();
@@ -243,7 +243,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 10. clear_patch */
+    /* clear_patch */
     {
         const char *req[] = {"patch_id"};
         tool = cJSON_CreateObject();
@@ -257,7 +257,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 11. send_message */
+    /* send_message */
     {
         const char *req[] = {"patch_id", "object_id", "message"};
         tool = cJSON_CreateObject();
@@ -277,7 +277,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 12. send_bang */
+    /* send_bang */
     {
         const char *req[] = {"patch_id", "object_id"};
         tool = cJSON_CreateObject();
@@ -293,7 +293,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 13. set_number */
+    /* set_number */
     {
         const char *req[] = {"patch_id", "object_id", "value"};
         tool = cJSON_CreateObject();
@@ -311,7 +311,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 14. set_dsp */
+    /* set_dsp */
     {
         const char *req[] = {"enabled"};
         tool = cJSON_CreateObject();
@@ -325,7 +325,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 15. get_dsp_state */
+    /* get_dsp_state */
     tool = cJSON_CreateObject();
     cJSON_AddStringToObject(tool, "name", "get_dsp_state");
     cJSON_AddStringToObject(tool, "description",
@@ -334,7 +334,7 @@ cJSON *mcp_build_tools_list(void)
     cJSON_AddItemToObject(tool, "inputSchema", schema);
     cJSON_AddItemToArray(tools, tool);
 
-    /* 16. get_selection */
+    /* get_selection */
     {
         const char *req[] = {"patch_id"};
         tool = cJSON_CreateObject();
@@ -348,7 +348,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 17. list_externals */
+    /* list_externals */
     tool = cJSON_CreateObject();
     cJSON_AddStringToObject(tool, "name", "list_externals");
     cJSON_AddStringToObject(tool, "description",
@@ -357,7 +357,7 @@ cJSON *mcp_build_tools_list(void)
     cJSON_AddItemToObject(tool, "inputSchema", schema);
     cJSON_AddItemToArray(tools, tool);
 
-    /* 18. get_object_doc */
+    /* get_object_doc */
     {
         const char *req[] = {"name"};
         tool = cJSON_CreateObject();
@@ -371,7 +371,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 19. open_patch */
+    /* open_patch */
     {
         const char *req[] = {"path"};
         tool = cJSON_CreateObject();
@@ -385,7 +385,7 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* 20. get_pd_log */
+    /* get_pd_log */
     {
         tool = cJSON_CreateObject();
         cJSON_AddStringToObject(tool, "name", "get_pd_log");
