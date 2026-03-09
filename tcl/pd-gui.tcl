@@ -75,6 +75,7 @@ namespace import ::pdwindow::pdtk_post
 namespace import ::pdwindow::pdtk_pd_dio
 namespace import ::pdwindow::pdtk_pd_audio
 namespace import ::pdwindow::pdtk_pd_dsp
+namespace import ::pdwindow::pdtk_pd_mcp
 namespace import ::pdwindow::pdtk_pd_meters
 namespace import ::pdtk_canvas::pdtk_canvas_popup
 namespace import ::pdtk_canvas::pdtk_canvas_editmode
