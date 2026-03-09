@@ -2,7 +2,7 @@
 
 **Pure Vibes is an unofficial, experimental fork of [Pure Data](https://puredata.info) (Pd 0.56.2) with a native MCP server built in.** It is vibe-coded and intended for experimental use only. It is not affiliated with or endorsed by Miller Puckette or the Pure Data community.
 
-Pure Vibes lets AI agents (Claude, ChatGPT, etc.) read, create, and manipulate Pd patches in real time through the [Model Context Protocol](https://modelcontextprotocol.io). You install it, check the "MCP" box, and point your AI app at it. No Python, no Node, no bridge patches.
+Pure Vibes lets AI agents (Claude, ChatGPT, etc.) read, create, and manipulate Pd patches in real time through the [Model Context Protocol](https://modelcontextprotocol.io). You install it, check the "MCP" box, and point your AI app at it. No bridge patches or sidecar processes — the MCP server runs natively inside Pd.
 
 ---
 
@@ -25,17 +25,32 @@ Add this to your Claude Desktop config file:
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
+**macOS config:**
 ```json
 {
   "mcpServers": {
     "pure-vibes": {
-      "url": "http://localhost:4330/mcp"
+      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd",
+      "args": ["-mcp-stdio"]
+    }
+  }
+}
+```
+
+**Linux config:**
+```json
+{
+  "mcpServers": {
+    "pure-vibes": {
+      "command": "pd",
+      "args": ["-mcp-stdio"]
     }
   }
 }
 ```
 
 Restart Claude Desktop. Pure Vibes should appear as a connected MCP server.
+Claude Desktop will launch Pd-vibes automatically when needed.
 
 ### 3. Try it out
 
@@ -53,11 +68,12 @@ Other things to try:
 
 > "Add a reverb to my patch"
 
-### 4. Connect to ChatGPT Desktop (or other MCP clients)
+### 4. Connect to other MCP clients
 
-Any MCP client that supports the Streamable HTTP transport can connect. Point it at:
+Pd-vibes supports two MCP transports:
 
-    http://localhost:4330/mcp
+- **Stdio** (recommended for Claude Desktop): Launch Pd with `-mcp-stdio`. The client communicates via stdin/stdout.
+- **Streamable HTTP**: Pd listens on `http://localhost:4330/mcp`. Any MCP client that supports Streamable HTTP can connect directly.
 
 ---
 
@@ -66,6 +82,7 @@ Any MCP client that supports the Streamable HTTP transport can connect. Point it
 - **Toggle**: Check/uncheck "MCP" in the main Pd window, or use the Media menu
 - **Port**: Media > MCP Port... (default: 4330). CLI: `-mcpport 4331`
 - **Network**: Media > MCP Allow Network (default: localhost only). CLI: `-mcpnetwork`
+- **Stdio**: Launch with `-mcp-stdio` for stdin/stdout JSON-RPC transport
 - **Disable**: Uncheck "MCP" or start with `-nomcp`
 
 ---

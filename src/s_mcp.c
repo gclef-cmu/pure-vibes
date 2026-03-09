@@ -1872,6 +1872,144 @@ void mcp_stop(void)
 void mcp_free(void)
 {
     mcp_stop();
+    mcp_stdio_stop();
+}
+
+/* ==== STDIO TRANSPORT ==== */
+/* MCP stdio transport: reads newline-delimited JSON-RPC from stdin,
+   writes newline-delimited JSON-RPC responses to stdout.
+   Used when Pd is launched as a child process by Claude Desktop, etc. */
+
+static struct {
+    int active;
+    char *recv_buf;
+    int recv_len;
+    int recv_alloc;
+} mcp_stdio = {0};
+
+static void mcp_stdio_poll(void *ptr, int fd)
+{
+    (void)ptr;
+
+    /* ensure buffer exists */
+    if (!mcp_stdio.recv_buf)
+    {
+        mcp_stdio.recv_alloc = MCP_BUF_INITIAL;
+        mcp_stdio.recv_buf = (char *)getbytes(mcp_stdio.recv_alloc);
+        mcp_stdio.recv_len = 0;
+    }
+
+    /* grow buffer if needed */
+    if (mcp_stdio.recv_len >= mcp_stdio.recv_alloc - 1)
+    {
+        if (mcp_stdio.recv_alloc >= MCP_MAX_REQUEST_SIZE)
+        {
+            post("mcp stdio: request too large, discarding");
+            mcp_stdio.recv_len = 0;
+            return;
+        }
+        int newsize = mcp_stdio.recv_alloc * 2;
+        char *newbuf = (char *)getbytes(newsize);
+        memcpy(newbuf, mcp_stdio.recv_buf, mcp_stdio.recv_len);
+        freebytes(mcp_stdio.recv_buf, mcp_stdio.recv_alloc);
+        mcp_stdio.recv_buf = newbuf;
+        mcp_stdio.recv_alloc = newsize;
+    }
+
+    /* read available data from stdin */
+    int n = (int)read(fd, mcp_stdio.recv_buf + mcp_stdio.recv_len,
+        mcp_stdio.recv_alloc - mcp_stdio.recv_len - 1);
+    if (n <= 0)
+    {
+        if (n == 0)
+        {
+            /* EOF on stdin — parent process closed the pipe */
+            post("mcp stdio: stdin closed, stopping");
+            mcp_stdio_stop();
+        }
+        return;
+    }
+
+    mcp_stdio.recv_len += n;
+    mcp_stdio.recv_buf[mcp_stdio.recv_len] = 0;
+
+    /* process complete lines (newline-delimited JSON) */
+    char *start = mcp_stdio.recv_buf;
+    char *newline;
+    while ((newline = strchr(start, '\n')) != NULL)
+    {
+        *newline = 0;
+        /* skip empty lines and carriage returns */
+        int line_len = (int)(newline - start);
+        if (line_len > 0 && start[line_len - 1] == '\r')
+            start[line_len - 1] = 0;
+
+        if (start[0] != 0)
+        {
+            int is_initialize = 0;
+            char *response = mcp_process_jsonrpc(start, &is_initialize);
+            if (response)
+            {
+                /* write response as a single line to stdout */
+                fprintf(stdout, "%s\n", response);
+                fflush(stdout);
+                free(response);
+            }
+        }
+        start = newline + 1;
+    }
+
+    /* move remaining partial data to front of buffer */
+    int remaining = mcp_stdio.recv_len - (int)(start - mcp_stdio.recv_buf);
+    if (remaining > 0 && start != mcp_stdio.recv_buf)
+        memmove(mcp_stdio.recv_buf, start, remaining);
+    mcp_stdio.recv_len = remaining;
+}
+
+void mcp_stdio_start(void)
+{
+    if (mcp_stdio.active) return;
+
+#ifndef _WIN32
+    /* set stdin to non-blocking */
+    int flags = fcntl(0, F_GETFL, 0);
+    if (flags >= 0)
+        fcntl(0, F_SETFL, flags | O_NONBLOCK);
+#endif
+
+    mcp_stdio.active = 1;
+    mcp_stdio.recv_buf = NULL;
+    mcp_stdio.recv_len = 0;
+    mcp_stdio.recv_alloc = 0;
+
+    sys_addpollfn(0, mcp_stdio_poll, NULL);
+
+    post("mcp: stdio transport started");
+}
+
+void mcp_stdio_stop(void)
+{
+    if (!mcp_stdio.active) return;
+
+    sys_rmpollfn(0);
+
+#ifndef _WIN32
+    /* restore stdin to blocking */
+    int flags = fcntl(0, F_GETFL, 0);
+    if (flags >= 0)
+        fcntl(0, F_SETFL, flags & ~O_NONBLOCK);
+#endif
+
+    if (mcp_stdio.recv_buf)
+    {
+        freebytes(mcp_stdio.recv_buf, mcp_stdio.recv_alloc);
+        mcp_stdio.recv_buf = NULL;
+    }
+    mcp_stdio.recv_len = 0;
+    mcp_stdio.recv_alloc = 0;
+    mcp_stdio.active = 0;
+
+    post("mcp: stdio transport stopped");
 }
 
 /* ---- glob methods (called from Tcl via pdsend) ---- */

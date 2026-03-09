@@ -10,6 +10,10 @@ void mcp_start(int port, int localhost_only);
 void mcp_stop(void);
 void mcp_free(void);
 
+/* stdio transport (for Claude Desktop / MCP clients that launch Pd) */
+void mcp_stdio_start(void);
+void mcp_stdio_stop(void);
+
 /* glob methods called from Tcl via pdsend */
 void glob_mcp(void *dummy, t_symbol *s, int argc, t_atom *argv);
 void glob_mcp_port(void *dummy, t_floatarg port);
