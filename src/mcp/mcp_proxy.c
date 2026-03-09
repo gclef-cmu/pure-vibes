@@ -6,7 +6,8 @@
  *
  * - initialize, tools/list, ping: handled locally (always succeeds)
  * - tools/call: forwarded via HTTP POST to Pd-vibes at localhost:4330/mcp
- * - If Pd-vibes isn't reachable, attempts to launch it automatically
+ * - If Pd-vibes isn't reachable, returns an error telling the user to
+ *   launch Pd-vibes and enable MCP.
  *
  * Dependencies: cJSON + mcp_tools (shared). No Pd internals.
  */
@@ -33,19 +34,13 @@ typedef int socklen_t;
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/wait.h>
-#ifdef __APPLE__
-#include <mach-o/dyld.h> /* _NSGetExecutablePath */
-#endif
 #endif
 
 /* ---- constants ---- */
 #define PROXY_BUF_SIZE       (1024 * 1024)
 #define PROXY_LINE_SIZE      (1024 * 1024)
 #define PROXY_CONNECT_TIMEOUT_SEC  2
-#define PROXY_LAUNCH_WAIT_SEC      8
-#define PROXY_LAUNCH_POLL_MS       200
-
+#define PROXY_IO_TIMEOUT_SEC       2
 static int proxy_port = MCP_DEFAULT_PORT;
 
 /* ---- minimal HTTP client ---- */
@@ -57,6 +52,9 @@ static char *proxy_http_post(const char *json_body)
     int fd = -1;
     char *buf = NULL;
     char *result = NULL;
+    int total = 0;
+    int content_length = -1;
+    char *body = NULL;
 
 #ifdef _WIN32
     WSADATA wsa;
@@ -125,6 +123,15 @@ static char *proxy_http_post(const char *json_body)
     }
 #endif
 
+    /* bound send/recv so an open but hung port fails quickly */
+    {
+        struct timeval tv;
+        tv.tv_sec = PROXY_IO_TIMEOUT_SEC;
+        tv.tv_usec = 0;
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const void *)&tv, sizeof(tv));
+    }
+
     /* send HTTP request */
     {
         int body_len = (int)strlen(json_body);
@@ -145,153 +152,47 @@ static char *proxy_http_post(const char *json_body)
     buf = (char *)malloc(PROXY_BUF_SIZE);
     if (!buf) goto fail;
 
+    while (total < PROXY_BUF_SIZE - 1)
     {
-        int total = 0, n;
-        while ((n = (int)recv(fd, buf + total,
-                              PROXY_BUF_SIZE - total - 1, 0)) > 0)
-            total += n;
+        int n = (int)recv(fd, buf + total, PROXY_BUF_SIZE - total - 1, 0);
+        if (n <= 0)
+            break;
+        total += n;
         buf[total] = 0;
+
+        if (!body)
+        {
+            char *header_end = strstr(buf, "\r\n\r\n");
+            if (header_end)
+            {
+                char *content_length_hdr = strstr(buf, "Content-Length:");
+                body = header_end + 4;
+                if (content_length_hdr && content_length_hdr < header_end)
+                    content_length = atoi(content_length_hdr + 15);
+            }
+        }
+
+        if (body && content_length >= 0 && total >= (body - buf) + content_length)
+            break;
     }
 
-    /* extract body after HTTP headers */
+    if (body)
     {
-        char *body = strstr(buf, "\r\n\r\n");
-        if (body)
+        if (content_length >= 0)
         {
-            body += 4;
-            result = strdup(body);
+            result = (char *)malloc((size_t)content_length + 1);
+            if (!result) goto fail;
+            memcpy(result, body, (size_t)content_length);
+            result[content_length] = 0;
         }
+        else
+            result = strdup(body);
     }
 
 fail:
     if (buf) free(buf);
     if (fd >= 0) close(fd);
     return result;
-}
-
-/* ---- process management ---- */
-
-/* find the 'pd' binary as a sibling of this proxy binary */
-static const char *proxy_find_pd(void)
-{
-    static char pd_path[4096];
-
-#ifdef __APPLE__
-    {
-        uint32_t size = sizeof(pd_path);
-        if (_NSGetExecutablePath(pd_path, &size) == 0)
-        {
-            /* resolve symlinks */
-            char resolved[4096];
-            if (realpath(pd_path, resolved))
-                strncpy(pd_path, resolved, sizeof(pd_path) - 1);
-
-            char *last_slash = strrchr(pd_path, '/');
-            if (last_slash)
-            {
-                strcpy(last_slash + 1, "pd");
-                if (access(pd_path, X_OK) == 0)
-                    return pd_path;
-            }
-        }
-    }
-#elif defined(__linux__)
-    {
-        ssize_t len = readlink("/proc/self/exe", pd_path,
-            sizeof(pd_path) - 1);
-        if (len > 0)
-        {
-            pd_path[len] = 0;
-            char *last_slash = strrchr(pd_path, '/');
-            if (last_slash)
-            {
-                strcpy(last_slash + 1, "pd");
-                if (access(pd_path, X_OK) == 0)
-                    return pd_path;
-            }
-        }
-    }
-#endif
-
-    /* fallback: try PATH */
-    if (
-#ifndef _WIN32
-        system("which pd > /dev/null 2>&1") == 0
-#else
-        system("where pd > NUL 2>&1") == 0
-#endif
-    )
-        return "pd";
-
-    return NULL;
-}
-
-/* try to launch Pd-vibes with MCP enabled, wait for the server to come up */
-static int proxy_launch_pd(void)
-{
-    const char *pd = proxy_find_pd();
-    if (!pd)
-    {
-        fprintf(stderr, "pd-vibes-mcp: cannot find pd binary\n");
-        return 0;
-    }
-
-    fprintf(stderr, "pd-vibes-mcp: launching %s ...\n", pd);
-
-#ifndef _WIN32
-    pid_t pid = fork();
-    if (pid < 0) return 0;
-
-    if (pid == 0)
-    {
-        /* child: detach and exec pd with MCP enabled */
-        setsid();
-
-        /* close proxy's stdin/stdout so Pd doesn't inherit them */
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-
-        char port_str[16];
-        snprintf(port_str, sizeof(port_str), "%d", proxy_port);
-        execlp(pd, "pd", "-mcpport", port_str, (char *)NULL);
-        _exit(127);
-    }
-
-    /* parent: wait for Pd's MCP server to become reachable */
-    {
-        int waited_ms = 0;
-        while (waited_ms < PROXY_LAUNCH_WAIT_SEC * 1000)
-        {
-            usleep(PROXY_LAUNCH_POLL_MS * 1000);
-            waited_ms += PROXY_LAUNCH_POLL_MS;
-
-            /* try a quick connection to the port */
-            int tfd = socket(AF_INET, SOCK_STREAM, 0);
-            if (tfd < 0) continue;
-
-            struct sockaddr_in a;
-            memset(&a, 0, sizeof(a));
-            a.sin_family = AF_INET;
-            a.sin_port = htons((unsigned short)proxy_port);
-            a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-            if (connect(tfd, (struct sockaddr *)&a, sizeof(a)) == 0)
-            {
-                close(tfd);
-                fprintf(stderr,
-                    "pd-vibes-mcp: Pd-vibes is up (took %d ms)\n",
-                    waited_ms);
-                return 1;
-            }
-            close(tfd);
-        }
-    }
-
-    fprintf(stderr,
-        "pd-vibes-mcp: timed out waiting for Pd-vibes to start\n");
-#endif /* !_WIN32 */
-
-    return 0;
 }
 
 /* ---- JSON-RPC helpers ---- */
@@ -359,26 +260,18 @@ static cJSON *handle_tools_list(cJSON *id)
 /* forward a tools/call request to Pd's HTTP MCP server */
 static cJSON *handle_tools_call(cJSON *id, const char *original_request)
 {
-    /* first attempt */
     char *response = proxy_http_post(original_request);
 
-    /* if that failed, try launching Pd */
     if (!response)
     {
         fprintf(stderr,
-            "pd-vibes-mcp: cannot reach Pd-vibes at localhost:%d, "
-            "attempting to launch...\n", proxy_port);
-
-        if (proxy_launch_pd())
-            response = proxy_http_post(original_request);
-    }
-
-    if (!response)
-    {
+            "pd-vibes-mcp: cannot reach Pd-vibes at localhost:%d; "
+            "make sure Pd-vibes is already running and MCP is enabled\n",
+            proxy_port);
         return make_error(id, -32000,
             "Could not connect to Pd-vibes. "
-            "Please launch Pd-vibes and enable the MCP checkbox "
-            "(Media > MCP), then try again.");
+            "Make sure Pd-vibes is already running and the MCP checkbox "
+            "(Media > MCP) is enabled, then try again.");
     }
 
     /* parse the response from Pd and return it */

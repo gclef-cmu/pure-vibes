@@ -1,3 +1,7 @@
+.claude
+.cursor
+src/pd-vibes-mcp
+
 # binaries
 bin
 src/pd
@@ -16,6 +20,7 @@ GNUmakefile
 GNUmakefile.in
 aclocal.m4
 configure
+configure~
 config.log
 config.status
 libtool

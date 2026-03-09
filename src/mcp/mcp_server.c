@@ -1390,6 +1390,11 @@ static void mcp_connect_poll(void *ptr, int fd)
 
 /* ==== PUBLIC API ==== */
 
+int mcp_is_running(void)
+{
+    return mcp_server.running;
+}
+
 void mcp_init(void)
 {
     /* nothing to do yet — server starts when enabled */

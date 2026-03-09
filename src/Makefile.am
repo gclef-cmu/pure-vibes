@@ -70,6 +70,7 @@ pd_watchdog_SOURCES = s_watchdog.c
 
 pd_vibes_mcp_SOURCES = mcp/mcp_proxy.c mcp/mcp_tools.c mcp/cJSON.c
 pd_vibes_mcp_CFLAGS = @PD_CFLAGS@ -I$(srcdir)/mcp
+pd_vibes_mcp_LDFLAGS = @PD_LDFLAGS@
 libpd_la_SOURCES = \
     z_libpd.c \
     z_hooks.c \

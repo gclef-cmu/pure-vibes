@@ -2,7 +2,7 @@
 
 **Pure Vibes is an unofficial, experimental fork of [Pure Data](https://puredata.info) (Pd 0.56.2) with a native MCP server built in.** It is vibe-coded and intended for experimental use only. It is not affiliated with or endorsed by Miller Puckette or the Pure Data community.
 
-Pure Vibes lets AI agents (Claude, ChatGPT, etc.) read, create, and manipulate Pd patches in real time through the [Model Context Protocol](https://modelcontextprotocol.io). You install it, check the "MCP" box, and point your AI app at it. No bridge patches or sidecar processes — the MCP server runs natively inside Pd.
+Pure Vibes lets AI agents (Claude, ChatGPT, etc.) read, create, and manipulate Pd patches in real time through the [Model Context Protocol](https://modelcontextprotocol.io). The built-in MCP server runs over HTTP inside Pd, and the app also ships with a tiny `pd-vibes-mcp` proxy binary so Claude Desktop can talk to it over stdio.
 
 ---
 
@@ -16,7 +16,7 @@ Download the latest release for your platform from the **[Releases](../../releas
 - **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `pd.exe`
 - **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd`
 
-Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP). It is enabled by default, listening on port 4330.
+Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP). It is off by default. Enable it when you want AI tools to connect.
 
 ### 2. Connect to Claude Desktop
 
@@ -30,8 +30,7 @@ Add this to your Claude Desktop config file:
 {
   "mcpServers": {
     "pure-vibes": {
-      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd",
-      "args": ["-mcp-stdio"]
+      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd-vibes-mcp"
     }
   }
 }
@@ -42,15 +41,14 @@ Add this to your Claude Desktop config file:
 {
   "mcpServers": {
     "pure-vibes": {
-      "command": "pd",
-      "args": ["-mcp-stdio"]
+      "command": "pd-vibes-mcp"
     }
   }
 }
 ```
 
 Restart Claude Desktop. Pure Vibes should appear as a connected MCP server.
-Claude Desktop will launch Pd-vibes automatically when needed.
+The proxy always responds to `initialize` and `tools/list`; when you make a tool call, it will connect to Pd-vibes on `http://127.0.0.1:4330/mcp` and try to launch Pd-vibes automatically if needed.
 
 ### 3. Try it out
 
@@ -70,10 +68,10 @@ Other things to try:
 
 ### 4. Connect to other MCP clients
 
-Pd-vibes supports two MCP transports:
+Pd-vibes supports two MCP connection modes:
 
-- **Stdio** (recommended for Claude Desktop): Launch Pd with `-mcp-stdio`. The client communicates via stdin/stdout.
-- **Streamable HTTP**: Pd listens on `http://localhost:4330/mcp`. Any MCP client that supports Streamable HTTP can connect directly.
+- **Claude Desktop via stdio proxy**: Point Claude at `pd-vibes-mcp`. The proxy speaks stdio to Claude and forwards tool calls to Pd-vibes over HTTP on localhost.
+- **Direct Streamable HTTP**: Pd-vibes listens on `http://localhost:4330/mcp` when MCP is enabled. Any MCP client that supports Streamable HTTP can connect directly.
 
 ---
 
@@ -82,7 +80,7 @@ Pd-vibes supports two MCP transports:
 - **Toggle**: Check/uncheck "MCP" in the main Pd window, or use the Media menu
 - **Port**: Media > MCP Port... (default: 4330). CLI: `-mcpport 4331`
 - **Network**: Media > MCP Allow Network (default: localhost only). CLI: `-mcpnetwork`
-- **Stdio**: Launch with `-mcp-stdio` for stdin/stdout JSON-RPC transport
+- **Default state**: MCP is off until you enable it via the checkbox or `-mcpport`
 - **Disable**: Uncheck "MCP" or start with `-nomcp`
 
 ---
@@ -172,7 +170,7 @@ Licensed under the **BSD 3-Clause License**. See LICENSE.txt for details.
 
 ### cJSON (embedded JSON library)
 
-The files `src/s_mcp_cjson.c` and `src/s_mcp_cjson.h` are from the
+The files `src/mcp/cJSON.c` and `src/mcp/cJSON.h` are from the
 [cJSON](https://github.com/DaveGamble/cJSON) project (v1.7.18):
 
     Copyright (c) 2009-2017 Dave Gamble and cJSON contributors.
@@ -182,8 +180,10 @@ top of each file.
 
 ### MCP Server Code
 
-The files `src/s_mcp.c` and `src/s_mcp.h` are new additions to this fork,
-written for the Pure Vibes project. They are released under the same
+The files `src/mcp/mcp_server.c`, `src/mcp/mcp_server.h`,
+`src/mcp/mcp_tools.c`, `src/mcp/mcp_tools.h`, and `src/mcp/mcp_proxy.c`
+are new additions to this fork, written for the Pure Vibes project.
+They are released under the same
 **BSD 3-Clause License** as the rest of Pure Data.
 
 ### Compatibility

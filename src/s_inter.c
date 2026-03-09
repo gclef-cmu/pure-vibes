@@ -10,6 +10,7 @@ that didn't really belong anywhere. */
 #include "m_imp.h"
 #include "g_canvas.h"   /* for GUI queueing stuff */
 #include "s_net.h"
+#include "mcp/mcp_server.h"
 #include <errno.h>
 #ifndef _WIN32
 #include <unistd.h>
@@ -1671,6 +1672,9 @@ static int sys_do_startgui(const char *libdir)
 
         pdgui_vmess("pdtk_pd_dsp", "s",
             THISGUI->i_dspstate ? "ON" : "OFF");
+
+        pdgui_vmess("pdtk_pd_mcp", "s",
+            mcp_is_running() ? "ON" : "OFF");
     }
 
     return (0);

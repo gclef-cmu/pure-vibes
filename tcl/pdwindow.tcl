@@ -404,7 +404,7 @@ proc ::pdwindow::create_window {} {
         -borderwidth 0  -command {pdsend "pd dsp $::dsp"}
     pack .pdwindow.header.dsp -side right -fill y -anchor e -padx 5 -pady 0
 
-    set ::mcp_enabled 1
+    set ::mcp_enabled 0
     checkbutton .pdwindow.header.mcp -text "MCP" -variable ::mcp_enabled \
         -takefocus 1 -background lightgray \
         -borderwidth 0 -command {pdsend "pd mcp $::mcp_enabled"}

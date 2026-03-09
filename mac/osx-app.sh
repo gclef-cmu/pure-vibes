@@ -124,6 +124,7 @@ install_manually() {
     cp -R $verbose "${BUILD}/src/pdsend"      "${DEST}/bin/"
     cp -R $verbose "${BUILD}/src/pdreceive"   "${DEST}/bin/"
     cp -R $verbose "${BUILD}/src/pd-watchdog" "${DEST}/bin/" || true
+    cp -R $verbose "${BUILD}/src/pd-vibes-mcp" "${DEST}/bin/" || true
 
     # install resources
     mkdir -p "${DEST}/po"

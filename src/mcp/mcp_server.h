@@ -11,6 +11,7 @@
 #include "mcp_tools.h" /* for MCP_DEFAULT_PORT */
 
 void mcp_init(void);
+int mcp_is_running(void);
 void mcp_start(int port, int localhost_only);
 void mcp_stop(void);
 void mcp_free(void);
