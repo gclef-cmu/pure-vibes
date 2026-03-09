@@ -381,6 +381,9 @@ typedef void (*t_printhook)(const char *s);
 extern t_printhook sys_printhook;
 extern int sys_printtostderr;
 
+/* optional hook for MCP to capture log output; (level, msg) */
+extern void (*sys_logbuffer_hook)(int level, const char *msg);
+
 /* jsarlo { */
 
 EXTERN int sys_externalschedlib;

@@ -26,6 +26,9 @@
 t_printhook sys_printhook = NULL;
 int sys_printtostderr;
 
+/* optional hook for MCP etc. to capture log output; (level, msg) */
+void (*sys_logbuffer_hook)(int level, const char *msg) = NULL;
+
 #ifdef _WIN32
 
     /* NB: Unlike vsnprintf(), _vsnprintf() does *not* null-terminate
@@ -123,6 +126,8 @@ char* pdgui_strnescape(char *dst, size_t dstlen, const char *src, size_t srclen)
 
 static void dopost(const char *s)
 {
+    if (sys_logbuffer_hook)
+        (*sys_logbuffer_hook)(PD_NORMAL, s);
     if (STUFF->st_printhook)
         (*STUFF->st_printhook)(s);
     else if (sys_printtostderr || !sys_havetkproc())
@@ -145,6 +150,8 @@ static void doerror(const void *object, const char *s)
     char upbuf[MAXPDSTRING];
     upbuf[MAXPDSTRING-1]=0;
 
+    if (sys_logbuffer_hook)
+        (*sys_logbuffer_hook)(PD_ERROR, s);
     // what about sys_printhook_error ?
     if (STUFF->st_printhook)
     {
@@ -173,6 +180,8 @@ static void dologpost(const void *object, const int level, const char *s)
             nothing */
     if (level >= PD_VERBOSE && !sys_verbose)
         return;
+    if (sys_logbuffer_hook)
+        (*sys_logbuffer_hook)(level, s);
     // what about sys_printhook_verbose ?
     if (STUFF->st_printhook)
     {

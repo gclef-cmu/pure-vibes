@@ -50,6 +50,8 @@ extern void glob_open(t_pd *ignore, t_symbol *name, t_symbol *dir,
 #define MCP_MAX_REQUEST_SIZE (1024 * 1024)
 #define MCP_SESSION_ID_LEN   32
 #define MCP_BUF_INITIAL      4096
+#define MCP_LOG_MAX_LINES    10000
+#define MCP_LOG_LINE_MAX     512
 
 /* ---- data structures ---- */
 typedef struct _mcp_client {
@@ -75,6 +77,49 @@ static struct {
     .enabled = 0,
     .running = 0,
 };
+
+/* Pd log ring buffer for get_pd_log tool */
+typedef struct {
+    int level;
+    char line[MCP_LOG_LINE_MAX];
+} mcp_log_entry_t;
+static mcp_log_entry_t mcp_log_ring[MCP_LOG_MAX_LINES];
+static int mcp_log_head;
+static int mcp_log_count;
+
+static void mcp_logbuffer_append(int level, const char *msg)
+{
+    const char *p = msg;
+    char buf[MCP_LOG_LINE_MAX];
+    int i, len;
+    while (*p)
+    {
+        const char *end = strchr(p, '\n');
+        if (end)
+        {
+            len = (int)(end - p);
+            if (len >= MCP_LOG_LINE_MAX) len = MCP_LOG_LINE_MAX - 1;
+            memcpy(buf, p, len);
+            buf[len] = 0;
+            p = end + 1;
+        }
+        else
+        {
+            len = (int)strlen(p);
+            if (len >= MCP_LOG_LINE_MAX) len = MCP_LOG_LINE_MAX - 1;
+            memcpy(buf, p, len);
+            buf[len] = 0;
+            p += len;
+        }
+        if (mcp_log_count < MCP_LOG_MAX_LINES)
+            mcp_log_count++;
+        i = mcp_log_head % MCP_LOG_MAX_LINES;
+        mcp_log_ring[i].level = level;
+        strncpy(mcp_log_ring[i].line, buf, MCP_LOG_LINE_MAX - 1);
+        mcp_log_ring[i].line[MCP_LOG_LINE_MAX - 1] = 0;
+        mcp_log_head++;
+    }
+}
 
 /* ---- utility: generate a random hex session ID ---- */
 static void mcp_generate_session_id(char *buf, int len)
@@ -882,6 +927,83 @@ static cJSON *mcp_tool_open_patch(cJSON *args)
     return mcp_wrap_content(mcp_ok_result());
 }
 
+/* ---- tool: get_pd_log ---- */
+static cJSON *mcp_tool_get_pd_log(cJSON *args)
+{
+    cJSON *jn = args ? cJSON_GetObjectItem(args, "n") : NULL;
+    cJSON *jk = args ? cJSON_GetObjectItem(args, "k") : NULL;
+
+    int n_lines = -1;  /* -1 = entire log */
+    int max_level = 4; /* 4 = all levels */
+
+    if (jn && cJSON_IsNumber(jn) && !cJSON_IsNull(jn))
+    {
+        int v = (int)cJSON_GetNumberValue(jn);
+        if (v > 0) n_lines = v;
+    }
+    if (jk && cJSON_IsString(jk))
+    {
+        const char *s = cJSON_GetStringValue(jk);
+        if (!strcmp(s, "fatal")) max_level = 0;
+        else if (!strcmp(s, "error")) max_level = 1;
+        else if (!strcmp(s, "normal")) max_level = 2;
+        else if (!strcmp(s, "debug")) max_level = 3;
+        else if (!strcmp(s, "all")) max_level = 4;
+        /* omit or unknown -> 4 (all) */
+    }
+
+    /* max_level 4 = all (no filter); 0-3 = include level <= max_level */
+    int total = 0;
+    int i;
+    int start = (mcp_log_head - mcp_log_count + MCP_LOG_MAX_LINES) %
+        MCP_LOG_MAX_LINES;
+
+    for (i = 0; i < mcp_log_count; i++)
+    {
+        int idx = (start + i) % MCP_LOG_MAX_LINES;
+        if (max_level >= 4 || mcp_log_ring[idx].level <= max_level)
+            total++;
+    }
+
+    int skip = (n_lines > 0 && total > n_lines) ? total - n_lines : 0;
+    int out_lines = (n_lines > 0 && total > n_lines) ? n_lines : total;
+
+    /* compute output size */
+    size_t out_size = 1;
+    int counted = 0;
+    for (i = 0; i < mcp_log_count && counted < out_lines; i++)
+    {
+        int idx = (start + i) % MCP_LOG_MAX_LINES;
+        if (max_level >= 4 || mcp_log_ring[idx].level <= max_level)
+        {
+            if (skip > 0) { skip--; continue; }
+            out_size += strlen(mcp_log_ring[idx].line) + 1;
+            counted++;
+        }
+    }
+
+    char *out = (char *)getbytes(out_size);
+    if (!out)
+        return mcp_wrap_content(mcp_error_result("out of memory"));
+    out[0] = 0;
+    skip = (n_lines > 0 && total > n_lines) ? total - n_lines : 0;
+    for (i = 0; i < mcp_log_count; i++)
+    {
+        int idx = (start + i) % MCP_LOG_MAX_LINES;
+        if (max_level >= 4 || mcp_log_ring[idx].level <= max_level)
+        {
+            if (skip > 0) { skip--; continue; }
+            strcat(out, mcp_log_ring[idx].line);
+            strcat(out, "\n");
+        }
+    }
+
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddStringToObject(result, "log", out);
+    freebytes(out, out_size);
+    return mcp_wrap_content(result);
+}
+
 /* ==== TOOL DISPATCH ==== */
 static cJSON *mcp_dispatch_tool(const char *name, cJSON *args)
 {
@@ -923,6 +1045,8 @@ static cJSON *mcp_dispatch_tool(const char *name, cJSON *args)
         return mcp_tool_get_object_doc(args);
     if (!strcmp(name, "open_patch"))
         return mcp_tool_open_patch(args);
+    if (!strcmp(name, "get_pd_log"))
+        return mcp_tool_get_pd_log(args);
 
     return mcp_wrap_content(mcp_error_result("unknown tool"));
 }
@@ -1450,6 +1574,7 @@ void mcp_start(int port, int localhost_only)
     mcp_server.running = 1;
 
     sys_addpollfn(fd, mcp_connect_poll, NULL);
+    sys_logbuffer_hook = mcp_logbuffer_append;
 
     post("mcp: server started on %s:%d",
         mcp_server.localhost_only ? "127.0.0.1" : "0.0.0.0",
@@ -1488,6 +1613,7 @@ void mcp_stop(void)
 
     mcp_server.running = 0;
     mcp_server.session_id[0] = 0;
+    sys_logbuffer_hook = NULL;
 
     post("mcp: server stopped");
     pdgui_vmess("pdtk_pd_mcp", "s", "OFF");

@@ -385,5 +385,22 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
+    /* 20. get_pd_log */
+    {
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "get_pd_log");
+        cJSON_AddStringToObject(tool, "description",
+            "Return the most recent N lines of the Pd log output. "
+            "N omitted = entire log. K omitted = 'all'. "
+            "K values: 'fatal', 'error', 'normal', 'debug', 'all'");
+        schema = mcp_make_schema(NULL, 0);
+        mcp_schema_add_prop(schema, "n",
+            mcp_prop_int("Number of most recent lines; omit for entire log"));
+        mcp_schema_add_prop(schema, "k",
+            mcp_prop_string("Max log level: 'fatal','error','normal','debug','all'; omit for 'all'"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
     return tools;
 }
