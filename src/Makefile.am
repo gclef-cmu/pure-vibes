@@ -11,7 +11,7 @@ AM_CPPFLAGS = @PD_CPPFLAGS@
 AM_CFLAGS = @PD_CFLAGS@
 AM_LDFLAGS = @PD_LDFLAGS@
 
-pd_CFLAGS = -DPD -DPD_INTERNAL -DINSTALL_PREFIX=\"$(prefix)\" @PD_CFLAGS@
+pd_CFLAGS = -DPD -DPD_INTERNAL -DINSTALL_PREFIX=\"$(prefix)\" @PD_CFLAGS@ -I$(srcdir)/mcp
 pd_LDFLAGS = @PD_LDFLAGS@
 pd_LDADD =
 
@@ -52,7 +52,7 @@ pd_transformed=$(shell echo pd | sed -e '$(transform)')
 ##### Files, Binaries, & Libs #####
 
 # pd core & utils
-bin_PROGRAMS = pd pdsend pdreceive
+bin_PROGRAMS = pd pdsend pdreceive pd-vibes-mcp
 
 if LIBPD
 lib_LTLIBRARIES = libpd.la
@@ -67,6 +67,9 @@ endif
 pdsend_SOURCES = u_pdsend.c s_net.c
 pdreceive_SOURCES = u_pdreceive.c s_net.c
 pd_watchdog_SOURCES = s_watchdog.c
+
+pd_vibes_mcp_SOURCES = mcp/mcp_proxy.c mcp/mcp_tools.c mcp/cJSON.c
+pd_vibes_mcp_CFLAGS = @PD_CFLAGS@ -I$(srcdir)/mcp
 libpd_la_SOURCES = \
     z_libpd.c \
     z_hooks.c \
@@ -189,8 +192,9 @@ pd_SOURCES_core = \
     x_vexp.c \
     x_vexp_fun.c \
     x_vexp_if.c \
-    s_mcp.c \
-    s_mcp_cjson.c \
+    mcp/mcp_server.c \
+    mcp/mcp_tools.c \
+    mcp/cJSON.c \
     $(empty)
 
 pd_SOURCES_standalone = \
@@ -210,7 +214,7 @@ include_HEADERS = m_pd.h
 noinst_HEADERS = s_audio_alsa.h s_audio_paring.h s_utf8.h m_private_utils.h
 noinst_HEADERS += z_hooks.h z_ringbuffer.h x_libpdreceive.h
 noinst_HEADERS += m_dispatch.h d_osc.h
-noinst_HEADERS += s_mcp.h s_mcp_cjson.h
+noinst_HEADERS += mcp/mcp_server.h mcp/mcp_tools.h mcp/cJSON.h
 
 if LIBPD
 libpdinclude_HEADERS += m_pd.h z_libpd.h
@@ -494,6 +498,7 @@ convenience-links: $(libpdbin_PROGRAMS) $(bin_PROGRAMS)
 	$(LN_S) $(top_builddir)/src/pdreceive$(EXEEXT) $(top_builddir)/bin/pdreceive$(EXEEXT)
 	$(LN_S) $(top_srcdir)/tcl/pd-gui.in $(top_builddir)/bin/pd-gui
 	test -e $(top_builddir)/src/pd-watchdog$(EXEEXT) && $(LN_S) $(top_builddir)/src/pd-watchdog$(EXEEXT) $(top_builddir)/bin/pd-watchdog$(EXEEXT) || true
+	test -e $(top_builddir)/src/pd-vibes-mcp$(EXEEXT) && $(LN_S) $(top_builddir)/src/pd-vibes-mcp$(EXEEXT) $(top_builddir)/bin/pd-vibes-mcp$(EXEEXT) || true
 
 clean-local:
 	rm -rf $(top_builddir)/bin

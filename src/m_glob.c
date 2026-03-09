@@ -4,7 +4,7 @@
 
 #include "m_pd.h"
 #include "m_imp.h"
-#include "s_mcp.h"
+#include "mcp/mcp_server.h"
 
 t_class *glob_pdobject;
 static t_class *maxclass;

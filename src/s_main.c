@@ -6,7 +6,7 @@
 #include "m_imp.h"
 #include "s_stuff.h"
 #include "s_net.h"
-#include "s_mcp.h"
+#include "mcp/mcp_server.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -451,8 +451,6 @@ int sys_main(int argc, const char **argv)
     }
     namelist_free(sys_messagelist);
     sys_messagelist = 0;
-        /* start MCP server (on by default) */
-    mcp_start(MCP_DEFAULT_PORT, 1);
    if (sys_hipriority)
         sys_setrealtime(sys_libdir->s_name); /* set desired process priority */
     if (sys_externalschedlib)
@@ -588,10 +586,9 @@ static char *(usagemessage[]) = {
 "-autopatch       -- enable auto-patching to new objects (true by default)\n",
 "-noautopatch     -- defeat auto-patching\n",
 "-compatibility <f> -- set back-compatibility to version <f>\n",
-"-mcpport <n>     -- set MCP server port (default: 4330)\n",
+"-mcpport <n>     -- set MCP server port (default: 4330) and enable MCP\n",
 "-mcpnetwork      -- allow MCP connections from network (default: localhost)\n",
 "-nomcp           -- disable MCP server\n",
-"-mcp-stdio       -- enable MCP stdio transport (for Claude Desktop)\n",
 };
 
 static void sys_printusage(void)
@@ -1456,11 +1453,6 @@ int sys_argparse(int argc, const char **argv)
         else if (!strcmp(*argv, "-nomcp"))
         {
             mcp_stop();
-            argc--; argv++;
-        }
-        else if (!strcmp(*argv, "-mcp-stdio"))
-        {
-            mcp_stdio_start();
             argc--; argv++;
         }
         else

@@ -1,0 +1,389 @@
+/* mcp_tools.c - Shared MCP tool definitions
+ *
+ * Contains the JSON schema builders for all MCP tools. Used by both
+ * the server (mcp_server.c) and the proxy (mcp_proxy.c). Depends only
+ * on cJSON — no Pd internals.
+ */
+
+#include "mcp_tools.h"
+
+/* ---- JSON schema helpers ---- */
+
+cJSON *mcp_prop_string(const char *desc)
+{
+    cJSON *p = cJSON_CreateObject();
+    cJSON_AddStringToObject(p, "type", "string");
+    cJSON_AddStringToObject(p, "description", desc);
+    return p;
+}
+
+cJSON *mcp_prop_int(const char *desc)
+{
+    cJSON *p = cJSON_CreateObject();
+    cJSON_AddStringToObject(p, "type", "integer");
+    cJSON_AddStringToObject(p, "description", desc);
+    return p;
+}
+
+cJSON *mcp_prop_number(const char *desc)
+{
+    cJSON *p = cJSON_CreateObject();
+    cJSON_AddStringToObject(p, "type", "number");
+    cJSON_AddStringToObject(p, "description", desc);
+    return p;
+}
+
+cJSON *mcp_prop_bool(const char *desc)
+{
+    cJSON *p = cJSON_CreateObject();
+    cJSON_AddStringToObject(p, "type", "boolean");
+    cJSON_AddStringToObject(p, "description", desc);
+    return p;
+}
+
+cJSON *mcp_make_schema(const char *required[], int nrequired)
+{
+    cJSON *schema = cJSON_CreateObject();
+    cJSON_AddStringToObject(schema, "type", "object");
+    cJSON_AddItemToObject(schema, "properties", cJSON_CreateObject());
+    if (nrequired > 0)
+    {
+        cJSON *req = cJSON_CreateArray();
+        int i;
+        for (i = 0; i < nrequired; i++)
+            cJSON_AddItemToArray(req, cJSON_CreateString(required[i]));
+        cJSON_AddItemToObject(schema, "required", req);
+    }
+    return schema;
+}
+
+void mcp_schema_add_prop(cJSON *schema, const char *name, cJSON *prop)
+{
+    cJSON_AddItemToObject(cJSON_GetObjectItem(schema, "properties"), name,
+        prop);
+}
+
+/* ---- tool list ---- */
+
+cJSON *mcp_build_tools_list(void)
+{
+    cJSON *tools = cJSON_CreateArray();
+    cJSON *tool, *schema;
+
+    /* 1. list_patches */
+    tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(tool, "name", "list_patches");
+    cJSON_AddStringToObject(tool, "description",
+        "List all currently open patches with their names, file paths, "
+        "dirty flags, and dimensions");
+    schema = mcp_make_schema(NULL, 0);
+    cJSON_AddItemToObject(tool, "inputSchema", schema);
+    cJSON_AddItemToArray(tools, tool);
+
+    /* 2. get_patch_state */
+    {
+        const char *req[] = {"patch_id"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "get_patch_state");
+        cJSON_AddStringToObject(tool, "description",
+            "Get the full state of a patch: all objects (id, class, text, "
+            "position, type, inlet/outlet counts) and all connections");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index from list_patches"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 3. create_object */
+    {
+        const char *req[] = {"patch_id", "type", "x", "y"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "create_object");
+        cJSON_AddStringToObject(tool, "description",
+            "Create a new object in a patch. Type can be 'obj', 'msg', "
+            "'text', 'floatatom', or 'symbolatom'. For 'obj', text is "
+            "the object name and arguments (e.g. 'osc~ 440')");
+        schema = mcp_make_schema(req, 4);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "type",
+            mcp_prop_string("Box type: obj, msg, text, floatatom, "
+                "symbolatom"));
+        mcp_schema_add_prop(schema, "text",
+            mcp_prop_string("Object text (e.g. 'osc~ 440')"));
+        mcp_schema_add_prop(schema, "x",
+            mcp_prop_int("X position in pixels"));
+        mcp_schema_add_prop(schema, "y",
+            mcp_prop_int("Y position in pixels"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 4. delete_object */
+    {
+        const char *req[] = {"patch_id", "object_id"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "delete_object");
+        cJSON_AddStringToObject(tool, "description",
+            "Delete an object from a patch");
+        schema = mcp_make_schema(req, 2);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "object_id",
+            mcp_prop_int("Object index from get_patch_state"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 5. modify_object */
+    {
+        const char *req[] = {"patch_id", "object_id", "text"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "modify_object");
+        cJSON_AddStringToObject(tool, "description",
+            "Change the text of an object (will re-instantiate it)");
+        schema = mcp_make_schema(req, 3);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "object_id",
+            mcp_prop_int("Object index"));
+        mcp_schema_add_prop(schema, "text",
+            mcp_prop_string("New object text"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 6. move_object */
+    {
+        const char *req[] = {"patch_id", "object_id", "x", "y"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "move_object");
+        cJSON_AddStringToObject(tool, "description",
+            "Move an object to a new position");
+        schema = mcp_make_schema(req, 4);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "object_id",
+            mcp_prop_int("Object index"));
+        mcp_schema_add_prop(schema, "x",
+            mcp_prop_int("New X position"));
+        mcp_schema_add_prop(schema, "y",
+            mcp_prop_int("New Y position"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 7. connect */
+    {
+        const char *req[] = {"patch_id", "src_id", "outlet", "dst_id",
+            "inlet"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "connect");
+        cJSON_AddStringToObject(tool, "description",
+            "Connect an outlet of one object to an inlet of another");
+        schema = mcp_make_schema(req, 5);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "src_id",
+            mcp_prop_int("Source object index"));
+        mcp_schema_add_prop(schema, "outlet",
+            mcp_prop_int("Outlet number (0-based)"));
+        mcp_schema_add_prop(schema, "dst_id",
+            mcp_prop_int("Destination object index"));
+        mcp_schema_add_prop(schema, "inlet",
+            mcp_prop_int("Inlet number (0-based)"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 8. disconnect */
+    {
+        const char *req[] = {"patch_id", "src_id", "outlet", "dst_id",
+            "inlet"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "disconnect");
+        cJSON_AddStringToObject(tool, "description",
+            "Disconnect an outlet from an inlet");
+        schema = mcp_make_schema(req, 5);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "src_id",
+            mcp_prop_int("Source object index"));
+        mcp_schema_add_prop(schema, "outlet",
+            mcp_prop_int("Outlet number"));
+        mcp_schema_add_prop(schema, "dst_id",
+            mcp_prop_int("Destination object index"));
+        mcp_schema_add_prop(schema, "inlet",
+            mcp_prop_int("Inlet number"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 9. batch_update */
+    {
+        const char *req[] = {"patch_id", "operations"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "batch_update");
+        cJSON_AddStringToObject(tool, "description",
+            "Execute multiple operations atomically with DSP suspended. "
+            "Each operation is an object with 'tool' (tool name) and "
+            "'args' (arguments object). Operations execute in order.");
+        schema = mcp_make_schema(req, 2);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        {
+            cJSON *ops = cJSON_CreateObject();
+            cJSON_AddStringToObject(ops, "type", "array");
+            cJSON_AddStringToObject(ops, "description",
+                "Array of {tool, args} operations");
+            mcp_schema_add_prop(schema, "operations", ops);
+        }
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 10. clear_patch */
+    {
+        const char *req[] = {"patch_id"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "clear_patch");
+        cJSON_AddStringToObject(tool, "description",
+            "Delete all objects in a patch");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 11. send_message */
+    {
+        const char *req[] = {"patch_id", "object_id", "message"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "send_message");
+        cJSON_AddStringToObject(tool, "description",
+            "Send a message to an object's first inlet. The message is "
+            "a string that will be parsed as Pd atoms (e.g. 'set 440' "
+            "or 'bang')");
+        schema = mcp_make_schema(req, 3);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "object_id",
+            mcp_prop_int("Object index"));
+        mcp_schema_add_prop(schema, "message",
+            mcp_prop_string("Message to send (e.g. 'bang', 'set 440')"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 12. send_bang */
+    {
+        const char *req[] = {"patch_id", "object_id"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "send_bang");
+        cJSON_AddStringToObject(tool, "description",
+            "Send a bang to an object's first inlet");
+        schema = mcp_make_schema(req, 2);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "object_id",
+            mcp_prop_int("Object index"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 13. set_number */
+    {
+        const char *req[] = {"patch_id", "object_id", "value"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "set_number");
+        cJSON_AddStringToObject(tool, "description",
+            "Send a float value to an object's first inlet");
+        schema = mcp_make_schema(req, 3);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        mcp_schema_add_prop(schema, "object_id",
+            mcp_prop_int("Object index"));
+        mcp_schema_add_prop(schema, "value",
+            mcp_prop_number("Float value to send"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 14. set_dsp */
+    {
+        const char *req[] = {"enabled"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "set_dsp");
+        cJSON_AddStringToObject(tool, "description",
+            "Turn DSP audio processing on or off");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "enabled",
+            mcp_prop_bool("true to enable DSP, false to disable"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 15. get_dsp_state */
+    tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(tool, "name", "get_dsp_state");
+    cJSON_AddStringToObject(tool, "description",
+        "Get the current DSP (audio) state");
+    schema = mcp_make_schema(NULL, 0);
+    cJSON_AddItemToObject(tool, "inputSchema", schema);
+    cJSON_AddItemToArray(tools, tool);
+
+    /* 16. get_selection */
+    {
+        const char *req[] = {"patch_id"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "get_selection");
+        cJSON_AddStringToObject(tool, "description",
+            "Get the currently selected objects in a patch");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_int("Patch index"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 17. list_externals */
+    tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(tool, "name", "list_externals");
+    cJSON_AddStringToObject(tool, "description",
+        "List all known built-in object classes");
+    schema = mcp_make_schema(NULL, 0);
+    cJSON_AddItemToObject(tool, "inputSchema", schema);
+    cJSON_AddItemToArray(tools, tool);
+
+    /* 18. get_object_doc */
+    {
+        const char *req[] = {"name"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "get_object_doc");
+        cJSON_AddStringToObject(tool, "description",
+            "Get documentation info for a Pd object class");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "name",
+            mcp_prop_string("Object class name (e.g. 'osc~')"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* 19. open_patch */
+    {
+        const char *req[] = {"path"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "open_patch");
+        cJSON_AddStringToObject(tool, "description",
+            "Open a patch file by path");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "path",
+            mcp_prop_string("Full file path to the .pd file"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    return tools;
+}
