@@ -309,6 +309,49 @@ proc ::pd_menus::build_media_menu {mymenu} {
         -command {::pd_menucommands::scheduleAction pdsend "pd audio-properties"}
     $mymenu add command -label [_ "MIDI Settings..."] \
         -command {::pd_menucommands::scheduleAction pdsend "pd midi-properties"}
+
+    $mymenu add separator
+    $mymenu add checkbutton -label [_ "MCP Server"] \
+        -variable ::mcp_enabled \
+        -command {::pd_menucommands::scheduleAction pdsend "pd mcp $::mcp_enabled"}
+    $mymenu add command -label [_ "MCP Port..."] \
+        -command {::pd_menus::mcp_port_dialog}
+    $mymenu add checkbutton -label [_ "MCP Allow Network"] \
+        -variable ::mcp_network \
+        -command {::pd_menucommands::scheduleAction pdsend "pd mcp-network $::mcp_network"}
+}
+
+proc ::pd_menus::mcp_port_dialog {} {
+    if {![info exists ::mcp_port]} {
+        set ::mcp_port 4330
+    }
+    set result [tk_dialog .mcpport [_ "MCP Port"] \
+        [_ "Enter MCP server port:"] "" 0 "OK" "Cancel"]
+    if {$result == 0} {
+        set port [::pd_menus::mcp_port_input]
+        if {$port ne ""} {
+            ::pd_menucommands::scheduleAction pdsend "pd mcp-port $port"
+        }
+    }
+}
+
+proc ::pd_menus::mcp_port_input {} {
+    set w .mcpportinput
+    catch {destroy $w}
+    toplevel $w
+    wm title $w [_ "MCP Port"]
+    wm resizable $w 0 0
+    if {![info exists ::mcp_port]} {set ::mcp_port 4330}
+    label $w.label -text [_ "Port:"]
+    entry $w.entry -textvariable ::mcp_port -width 10
+    button $w.ok -text [_ "OK"] -command "
+        ::pd_menucommands::scheduleAction pdsend \"pd mcp-port \$::mcp_port\"
+        destroy $w
+    "
+    button $w.cancel -text [_ "Cancel"] -command "destroy $w"
+    grid $w.label $w.entry -padx 5 -pady 5
+    grid $w.ok $w.cancel -padx 5 -pady 5
+    focus $w.entry
 }
 
 proc ::pd_menus::build_window_menu {mymenu} {

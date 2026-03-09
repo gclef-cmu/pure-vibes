@@ -189,6 +189,8 @@ pd_SOURCES_core = \
     x_vexp.c \
     x_vexp_fun.c \
     x_vexp_if.c \
+    s_mcp.c \
+    s_mcp_cjson.c \
     $(empty)
 
 pd_SOURCES_standalone = \
@@ -208,6 +210,7 @@ include_HEADERS = m_pd.h
 noinst_HEADERS = s_audio_alsa.h s_audio_paring.h s_utf8.h m_private_utils.h
 noinst_HEADERS += z_hooks.h z_ringbuffer.h x_libpdreceive.h
 noinst_HEADERS += m_dispatch.h d_osc.h
+noinst_HEADERS += s_mcp.h s_mcp_cjson.h
 
 if LIBPD
 libpdinclude_HEADERS += m_pd.h z_libpd.h

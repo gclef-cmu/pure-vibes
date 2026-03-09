@@ -8,11 +8,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Pure Data 0.43\n"
 "Report-Msgid-Bugs-To: pd-dev@iem.at\n"
-"POT-Creation-Date: 2025-07-30 15:04+0200\n"
+"POT-Creation-Date: 2026-03-09 00:54-0400\n"
 "PO-Revision-Date: 2025-08-01 09:02+0000\n"
 "Last-Translator: umläute <dev@umlaeute.mur.at>\n"
-"Language-Team: Basque <https://hosted.weblate.org/projects/pure-data/"
-"pure-data/eu/>\n"
+"Language-Team: Basque <https://hosted.weblate.org/projects/pure-data/pure-"
+"data/eu/>\n"
 "Language: eu\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -2032,6 +2032,26 @@ msgstr "Audioaren Ezarpenak..."
 
 msgid "MIDI Settings..."
 msgstr "MIDI Ezarpenak..."
+
+msgid "MCP Server"
+msgstr ""
+
+#, fuzzy
+msgid "MCP Port..."
+msgstr "Inprimatu..."
+
+msgid "MCP Allow Network"
+msgstr ""
+
+msgid "MCP Port"
+msgstr ""
+
+msgid "Enter MCP server port:"
+msgstr ""
+
+#, fuzzy
+msgid "Port:"
+msgstr "Sarrera portuak:"
 
 msgid "Minimize"
 msgstr "Gutxitu"

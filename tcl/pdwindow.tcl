@@ -22,6 +22,7 @@ namespace eval ::pdwindow:: {
     namespace export pdtk_pd_dsp
     namespace export pdtk_pd_dio
     namespace export pdtk_pd_audio
+    namespace export pdtk_pd_mcp
 }
 array set ::pdwindow::missingobjects {}
 
@@ -251,6 +252,14 @@ proc ::pdwindow::pdtk_pd_dsp {value} {
     }
 }
 
+proc ::pdwindow::pdtk_pd_mcp {value} {
+    if {$value eq "ON"} {
+        set ::mcp_enabled 1
+    } else {
+        set ::mcp_enabled 0
+    }
+}
+
 proc ::pdwindow::pdtk_pd_dio {red} {
     set dio .pdwindow.header.ioframe.dio
     if {$red == 1} {
@@ -394,6 +403,12 @@ proc ::pdwindow::create_window {} {
         -takefocus 1 -background lightgray \
         -borderwidth 0  -command {pdsend "pd dsp $::dsp"}
     pack .pdwindow.header.dsp -side right -fill y -anchor e -padx 5 -pady 0
+
+    set ::mcp_enabled 1
+    checkbutton .pdwindow.header.mcp -text "MCP" -variable ::mcp_enabled \
+        -takefocus 1 -background lightgray \
+        -borderwidth 0 -command {pdsend "pd mcp $::mcp_enabled"}
+    pack .pdwindow.header.mcp -side right -fill y -anchor e -padx 5 -pady 0
 
 # frame for DIO error and audio in/out labels
     frame .pdwindow.header.ioframe -background lightgray

@@ -4,6 +4,7 @@
 
 #include "m_pd.h"
 #include "m_imp.h"
+#include "s_mcp.h"
 
 t_class *glob_pdobject;
 static t_class *maxclass;
@@ -211,6 +212,12 @@ void glob_init(void)
         gensym("colors"), A_SYMBOL, A_SYMBOL, A_SYMBOL, A_DEFSYMBOL, 0);
     class_addmethod(glob_pdobject, (t_method)glob_rescanaudio,
         gensym("rescan-audio"), 0);
+    class_addmethod(glob_pdobject, (t_method)glob_mcp,
+        gensym("mcp"), A_GIMME, 0);
+    class_addmethod(glob_pdobject, (t_method)glob_mcp_port,
+        gensym("mcp-port"), A_FLOAT, 0);
+    class_addmethod(glob_pdobject, (t_method)glob_mcp_network,
+        gensym("mcp-network"), A_FLOAT, 0);
     class_addanything(glob_pdobject, max_default);
     pd_bind(&glob_pdobject, gensym("pd"));
 }

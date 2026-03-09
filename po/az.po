@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Pure Data 0.43\n"
 "Report-Msgid-Bugs-To: pd-dev@iem.at\n"
-"POT-Creation-Date: 2025-07-30 15:04+0200\n"
+"POT-Creation-Date: 2026-03-09 00:54-0400\n"
 "PO-Revision-Date: 2004-03-12 22:22+0200\n"
 "Last-Translator: Metin Amiroff <metin@karegen.com>\n"
 "Language-Team: Azerbaijani <translation-team-az@lists.sourceforge.net>\n"
@@ -2024,6 +2024,25 @@ msgid "Audio Settings..."
 msgstr ""
 
 msgid "MIDI Settings..."
+msgstr ""
+
+msgid "MCP Server"
+msgstr ""
+
+#, fuzzy
+msgid "MCP Port..."
+msgstr "_Yüklə..."
+
+msgid "MCP Allow Network"
+msgstr ""
+
+msgid "MCP Port"
+msgstr ""
+
+msgid "Enter MCP server port:"
+msgstr ""
+
+msgid "Port:"
 msgstr ""
 
 msgid "Minimize"

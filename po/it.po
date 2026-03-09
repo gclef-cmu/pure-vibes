@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Pure Data 0.43\n"
 "Report-Msgid-Bugs-To: pd-dev@iem.at\n"
-"POT-Creation-Date: 2025-07-30 15:04+0200\n"
+"POT-Creation-Date: 2026-03-09 00:54-0400\n"
 "PO-Revision-Date: 2025-05-26 23:57+0000\n"
 "Last-Translator: umläute <dev@umlaeute.mur.at>\n"
 "Language-Team: Italian <https://hosted.weblate.org/projects/pure-data/pure-"
@@ -1989,6 +1989,26 @@ msgstr "Settaggi audio..."
 
 msgid "MIDI Settings..."
 msgstr "Settaggi MIDI..."
+
+msgid "MCP Server"
+msgstr ""
+
+#, fuzzy
+msgid "MCP Port..."
+msgstr "Stampa..."
+
+msgid "MCP Allow Network"
+msgstr ""
+
+msgid "MCP Port"
+msgstr ""
+
+msgid "Enter MCP server port:"
+msgstr ""
+
+#, fuzzy
+msgid "Port:"
+msgstr "Porte Ingresso:"
 
 msgid "Minimize"
 msgstr "Minimizza"

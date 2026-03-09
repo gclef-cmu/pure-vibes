@@ -6,6 +6,7 @@
 #include "m_imp.h"
 #include "s_stuff.h"
 #include "s_net.h"
+#include "s_mcp.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -450,6 +451,8 @@ int sys_main(int argc, const char **argv)
     }
     namelist_free(sys_messagelist);
     sys_messagelist = 0;
+        /* start MCP server (on by default) */
+    mcp_start(MCP_DEFAULT_PORT, 1);
    if (sys_hipriority)
         sys_setrealtime(sys_libdir->s_name); /* set desired process priority */
     if (sys_externalschedlib)
@@ -1436,6 +1439,21 @@ int sys_argparse(int argc, const char **argv)
             argc--, argv++;
         else if (!strcmp(*argv, "-prefsfile") && argc > 1) /* this too */
             argc -= 2, argv +=2;
+        else if (!strcmp(*argv, "-mcpport") && argc > 1)
+        {
+            mcp_start(atoi(argv[1]), 1);
+            argc -= 2; argv += 2;
+        }
+        else if (!strcmp(*argv, "-mcpnetwork"))
+        {
+            glob_mcp_network(NULL, 1);
+            argc--; argv++;
+        }
+        else if (!strcmp(*argv, "-nomcp"))
+        {
+            mcp_stop();
+            argc--; argv++;
+        }
         else
         {
         usage:
