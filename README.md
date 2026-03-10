@@ -13,8 +13,8 @@ Pure Vibes integrates a [Model Context Protocol (MCP)](https://modelcontextproto
 Download the latest release for your platform from the **[Releases](../../releases)** tab:
 
 - **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications
-- **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `pd-vibes.exe`
-- **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd-vibes`
+- **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `bin\pd.exe`
+- **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd`
 
 Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP). It is off by default. Enable it when you want AI tools to connect.
 
