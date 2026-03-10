@@ -1252,6 +1252,7 @@ static cJSON *mcp_tool_get_pd_log(cJSON *args)
 /* ==== TOOL DISPATCH ==== */
 static cJSON *mcp_dispatch_tool(const char *name, cJSON *args)
 {
+    logpost(0, PD_DEBUG, "mcp: tool call: %s", name);
     if (!strcmp(name, "list_patches"))
         return mcp_tool_list_patches(args);
     if (!strcmp(name, "get_patch_state"))

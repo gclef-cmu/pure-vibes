@@ -55,7 +55,7 @@ Restart Claude Desktop. Pure Vibes should appear as a connected MCP server.
 
 ### 3. Try it out
 
-Open a new patch in Pd-vibes (Cmd+N / Ctrl+N), then ask Claude:
+Open Pd-vibes, click to enable "MCP" in the main window, then ask Claude:
 
 > "Build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
 
