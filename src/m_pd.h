@@ -574,9 +574,7 @@ EXTERN t_class *class_new64(t_symbol *name, t_newmethod newmethod,
 
 EXTERN void class_free(t_class *c);
 
-#ifdef PDINSTANCE
 EXTERN t_class *class_getfirst(void);
-#endif
 
 EXTERN void class_addcreator(t_newmethod newmethod, t_symbol *s,
     t_atomtype type1, ...);

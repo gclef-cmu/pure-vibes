@@ -28,9 +28,9 @@ t_pd pd_objectmaker;    /* factory for creating "object" boxes */
 t_pd pd_canvasmaker;    /* factory for creating canvases */
 
 static t_symbol *class_extern_dir;
+static t_class *class_list = 0;
 
 #ifdef PDINSTANCE
-static t_class *class_list = 0;
 PERTHREAD t_pdinstance *pd_this = NULL;
 t_pdinstance **pd_instances;
 int pd_ninstances;
@@ -512,6 +512,8 @@ t_class *class_donew(t_symbol *s, t_newmethod newmethod, t_method freemethod,
     class_list = c;
 #else
     c->c_methods = t_getbytes(0);
+    c->c_next = class_list;
+    class_list = c;
 #endif
 #if 0       /* enable this if you want to see a list of all classes */
     post("class: %s", c->c_name->s_name);
@@ -545,18 +547,18 @@ t_class *class_new(t_symbol *s, t_newmethod newmethod, t_method freemethod,
 void class_free(t_class *c)
 {
     int i;
-#ifdef PDINSTANCE
-    t_class *prev;
-    if (class_list == c)
-        class_list = c->c_next;
-    else
     {
-        prev = class_list;
-        while (prev->c_next != c)
-          prev = prev->c_next;
-        prev->c_next = c->c_next;
+        t_class *prev;
+        if (class_list == c)
+            class_list = c->c_next;
+        else
+        {
+            prev = class_list;
+            while (prev->c_next != c)
+              prev = prev->c_next;
+            prev->c_next = c->c_next;
+        }
     }
-#endif
     if (c->c_classfreefn)
         c->c_classfreefn(c);
 #ifdef PDINSTANCE
@@ -578,12 +580,10 @@ void class_setfreefn(t_class *c, t_classfreefn fn)
     c->c_classfreefn = fn;
 }
 
-#ifdef PDINSTANCE
 t_class *class_getfirst(void)
 {
     return class_list;
 }
-#endif
 
     /* add a creation method, which is a function that returns a Pd object
     suitable for putting in an object box.  We presume you've got a class it

@@ -44,6 +44,7 @@ extern void canvas_symbolatom(t_glist *gl, t_symbol *s, int argc, t_atom *argv);
 extern void glob_dsp(void *dummy, t_symbol *s, int argc, t_atom *argv);
 extern void glob_open(t_pd *ignore, t_symbol *name, t_symbol *dir,
     t_floatarg f);
+extern void glob_menunew(void *dummy, t_symbol *filesym, t_symbol *dirsym);
 
 /* ---- constants ---- */
 #define MCP_MAX_CLIENTS      8
@@ -141,24 +142,70 @@ static void mcp_generate_session_id(char *buf, int len)
 /* ==== TOOL IMPLEMENTATIONS ==== */
 
 /* (tool definitions / JSON schemas are in mcp_tools.c) */
-/* helper: find canvas by index */
-static t_glist *mcp_find_canvas(int index)
+
+/* ---- stable pointer-based ID helpers ---- */
+
+/* format a pointer as a stable hex string ID */
+static const char *mcp_ptr_id(void *p, char *buf, size_t sz)
 {
-    t_glist *gl;
-    int i = 0;
-    for (gl = pd_this->pd_canvaslist; gl; gl = gl->gl_next, i++)
-        if (i == index) return gl;
+    snprintf(buf, sz, "%p", p);
+    return buf;
+}
+
+/* recursively search for a canvas (patch or subpatch) by pointer ID */
+static t_glist *mcp_find_canvas_recursive(t_glist *gl, const char *id)
+{
+    char buf[32];
+    mcp_ptr_id(gl, buf, sizeof(buf));
+    if (!strcmp(buf, id)) return gl;
+    t_gobj *g;
+    for (g = gl->gl_list; g; g = g->g_next)
+    {
+        if (pd_class(&g->g_pd) == canvas_class)
+        {
+            t_glist *found =
+                mcp_find_canvas_recursive((t_glist *)g, id);
+            if (found) return found;
+        }
+    }
     return NULL;
 }
 
-/* helper: find gobj by index in canvas */
-static t_gobj *mcp_find_gobj(t_glist *canvas, int index)
+/* find any canvas (root or subpatch) by pointer ID string */
+static t_glist *mcp_find_canvas_by_id(const char *id)
+{
+    t_glist *gl;
+    if (!id) return NULL;
+    for (gl = pd_this->pd_canvaslist; gl; gl = gl->gl_next)
+    {
+        t_glist *found = mcp_find_canvas_recursive(gl, id);
+        if (found) return found;
+    }
+    return NULL;
+}
+
+/* find an object in a canvas by pointer ID string */
+static t_gobj *mcp_find_gobj_by_id(t_glist *canvas, const char *id)
+{
+    t_gobj *g;
+    char buf[32];
+    if (!id) return NULL;
+    for (g = canvas->gl_list; g; g = g->g_next)
+    {
+        mcp_ptr_id(g, buf, sizeof(buf));
+        if (!strcmp(buf, id)) return g;
+    }
+    return NULL;
+}
+
+/* get the current sequential index of a gobj (needed for canvas_connect) */
+static int mcp_gobj_index(t_glist *canvas, t_gobj *target)
 {
     t_gobj *g;
     int i = 0;
     for (g = canvas->gl_list; g; g = g->g_next, i++)
-        if (i == index) return g;
-    return NULL;
+        if (g == target) return i;
+    return -1;
 }
 
 /* helper: count objects in canvas */
@@ -217,16 +264,34 @@ static const char *mcp_type_string(int te_type)
     }
 }
 
+/* map t_atomtype to string for method documentation */
+static const char *mcp_atomtype_string(unsigned char atype)
+{
+    switch (atype)
+    {
+        case A_FLOAT: return "float";
+        case A_SYMBOL: return "symbol";
+        case A_POINTER: return "pointer";
+        case A_DEFFLOAT: return "float?";
+        case A_DEFSYMBOL: return "symbol?";
+        case A_GIMME: return "...";
+        case A_CANT: return "(internal)";
+        default: return "unknown";
+    }
+}
+
 /* ---- tool: list_patches ---- */
 static cJSON *mcp_tool_list_patches(cJSON *args)
 {
+    (void)args;
     cJSON *result = cJSON_CreateArray();
     t_glist *gl;
-    int i = 0;
-    for (gl = pd_this->pd_canvaslist; gl; gl = gl->gl_next, i++)
+    char idbuf[32];
+    for (gl = pd_this->pd_canvaslist; gl; gl = gl->gl_next)
     {
         cJSON *patch = cJSON_CreateObject();
-        cJSON_AddNumberToObject(patch, "index", i);
+        cJSON_AddStringToObject(patch, "id",
+            mcp_ptr_id(gl, idbuf, sizeof(idbuf)));
         cJSON_AddStringToObject(patch, "name",
             gl->gl_name ? gl->gl_name->s_name : "untitled");
         cJSON_AddStringToObject(patch, "dir",
@@ -246,27 +311,33 @@ static cJSON *mcp_tool_list_patches(cJSON *args)
 /* ---- tool: get_patch_state ---- */
 static cJSON *mcp_tool_get_patch_state(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
+    char idbuf[32];
     cJSON *result = cJSON_CreateObject();
-    cJSON_AddNumberToObject(result, "patch_id", patch_id);
+    cJSON_AddStringToObject(result, "patch_id",
+        mcp_ptr_id(canvas, idbuf, sizeof(idbuf)));
     cJSON_AddStringToObject(result, "name",
         canvas->gl_name ? canvas->gl_name->s_name : "untitled");
 
     /* objects */
     cJSON *objects = cJSON_CreateArray();
     t_gobj *g;
-    int i = 0;
-    for (g = canvas->gl_list; g; g = g->g_next, i++)
+    for (g = canvas->gl_list; g; g = g->g_next)
     {
         cJSON *obj = cJSON_CreateObject();
-        cJSON_AddNumberToObject(obj, "id", i);
+        cJSON_AddStringToObject(obj, "id",
+            mcp_ptr_id(g, idbuf, sizeof(idbuf)));
         cJSON_AddStringToObject(obj, "class",
             class_getname(pd_class(&g->g_pd)));
+
+        /* detect subpatches */
+        if (pd_class(&g->g_pd) == canvas_class)
+            cJSON_AddBoolToObject(obj, "is_subpatch", 1);
 
         t_object *ob = pd_checkobject(&g->g_pd);
         if (ob)
@@ -311,11 +382,11 @@ static cJSON *mcp_tool_get_patch_state(cJSON *args)
     while ((oc = linetraverser_next(&t)))
     {
         cJSON *conn = cJSON_CreateObject();
-        cJSON_AddNumberToObject(conn, "src_id",
-            canvas_getindex(canvas, &t.tr_ob->ob_g));
+        cJSON_AddStringToObject(conn, "src_id",
+            mcp_ptr_id(&t.tr_ob->ob_g, idbuf, sizeof(idbuf)));
         cJSON_AddNumberToObject(conn, "outlet", t.tr_outno);
-        cJSON_AddNumberToObject(conn, "dst_id",
-            canvas_getindex(canvas, &t.tr_ob2->ob_g));
+        cJSON_AddStringToObject(conn, "dst_id",
+            mcp_ptr_id(&t.tr_ob2->ob_g, idbuf, sizeof(idbuf)));
         cJSON_AddNumberToObject(conn, "inlet", t.tr_inno);
         cJSON_AddItemToArray(connections, conn);
     }
@@ -327,7 +398,7 @@ static cJSON *mcp_tool_get_patch_state(cJSON *args)
 /* ---- tool: create_object ---- */
 static cJSON *mcp_tool_create_object(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
     const char *type = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "type"));
@@ -336,14 +407,11 @@ static cJSON *mcp_tool_create_object(cJSON *args)
     int x = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(args, "x"));
     int y = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(args, "y"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
     if (!type)
         return mcp_wrap_content(mcp_error_result("type is required"));
-
-    /* count objects before creation to find new object's index */
-    int count_before = mcp_count_objects(canvas);
 
     /* build argv: [x, y, text_atoms...] */
     t_binbuf *b = binbuf_new();
@@ -389,27 +457,36 @@ static cJSON *mcp_tool_create_object(cJSON *args)
 
     canvas_dirty(canvas, 1);
 
-    int count_after = mcp_count_objects(canvas);
+    /* find the newly created object (last in the list) */
+    t_gobj *last = NULL;
+    t_gobj *g;
+    for (g = canvas->gl_list; g; g = g->g_next)
+        last = g;
+
+    char idbuf[32];
     cJSON *result = cJSON_CreateObject();
     cJSON_AddBoolToObject(result, "success", 1);
-    cJSON_AddNumberToObject(result, "object_id", count_after - 1);
-    cJSON_AddNumberToObject(result, "num_objects", count_after);
+    if (last)
+        cJSON_AddStringToObject(result, "object_id",
+            mcp_ptr_id(last, idbuf, sizeof(idbuf)));
+    cJSON_AddNumberToObject(result, "num_objects",
+        mcp_count_objects(canvas));
     return mcp_wrap_content(result);
 }
 
 /* ---- tool: delete_object ---- */
 static cJSON *mcp_tool_delete_object(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int object_id = (int)cJSON_GetNumberValue(
+    const char *object_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "object_id"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
-    t_gobj *g = mcp_find_gobj(canvas, object_id);
+    t_gobj *g = mcp_find_gobj_by_id(canvas, object_id);
     if (!g)
         return mcp_wrap_content(mcp_error_result("object not found"));
 
@@ -424,20 +501,20 @@ static cJSON *mcp_tool_delete_object(cJSON *args)
 /* ---- tool: modify_object ---- */
 static cJSON *mcp_tool_modify_object(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int object_id = (int)cJSON_GetNumberValue(
+    const char *object_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "object_id"));
     const char *text = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "text"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
     if (!text)
         return mcp_wrap_content(mcp_error_result("text is required"));
 
-    t_gobj *g = mcp_find_gobj(canvas, object_id);
+    t_gobj *g = mcp_find_gobj_by_id(canvas, object_id);
     if (!g)
         return mcp_wrap_content(mcp_error_result("object not found"));
 
@@ -457,18 +534,18 @@ static cJSON *mcp_tool_modify_object(cJSON *args)
 /* ---- tool: move_object ---- */
 static cJSON *mcp_tool_move_object(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int object_id = (int)cJSON_GetNumberValue(
+    const char *object_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "object_id"));
     int x = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(args, "x"));
     int y = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(args, "y"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
-    t_gobj *g = mcp_find_gobj(canvas, object_id);
+    t_gobj *g = mcp_find_gobj_by_id(canvas, object_id);
     if (!g)
         return mcp_wrap_content(mcp_error_result("object not found"));
 
@@ -489,23 +566,31 @@ static cJSON *mcp_tool_move_object(cJSON *args)
 /* ---- tool: connect ---- */
 static cJSON *mcp_tool_connect(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int src_id = (int)cJSON_GetNumberValue(
+    const char *src_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "src_id"));
     int outlet = (int)cJSON_GetNumberValue(
         cJSON_GetObjectItem(args, "outlet"));
-    int dst_id = (int)cJSON_GetNumberValue(
+    const char *dst_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "dst_id"));
     int inlet = (int)cJSON_GetNumberValue(
         cJSON_GetObjectItem(args, "inlet"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
+    t_gobj *src = mcp_find_gobj_by_id(canvas, src_id);
+    t_gobj *dst = mcp_find_gobj_by_id(canvas, dst_id);
+    if (!src || !dst)
+        return mcp_wrap_content(mcp_error_result("object not found"));
+
+    int src_idx = mcp_gobj_index(canvas, src);
+    int dst_idx = mcp_gobj_index(canvas, dst);
+
     int dspwas = canvas_suspend_dsp();
-    canvas_connect(canvas, src_id, outlet, dst_id, inlet);
+    canvas_connect(canvas, src_idx, outlet, dst_idx, inlet);
     canvas_resume_dsp(dspwas);
     canvas_dirty(canvas, 1);
 
@@ -515,22 +600,30 @@ static cJSON *mcp_tool_connect(cJSON *args)
 /* ---- tool: disconnect ---- */
 static cJSON *mcp_tool_disconnect(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int src_id = (int)cJSON_GetNumberValue(
+    const char *src_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "src_id"));
     int outlet = (int)cJSON_GetNumberValue(
         cJSON_GetObjectItem(args, "outlet"));
-    int dst_id = (int)cJSON_GetNumberValue(
+    const char *dst_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "dst_id"));
     int inlet = (int)cJSON_GetNumberValue(
         cJSON_GetObjectItem(args, "inlet"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
-    canvas_disconnect(canvas, src_id, outlet, dst_id, inlet);
+    t_gobj *src = mcp_find_gobj_by_id(canvas, src_id);
+    t_gobj *dst = mcp_find_gobj_by_id(canvas, dst_id);
+    if (!src || !dst)
+        return mcp_wrap_content(mcp_error_result("object not found"));
+
+    int src_idx = mcp_gobj_index(canvas, src);
+    int dst_idx = mcp_gobj_index(canvas, dst);
+
+    canvas_disconnect(canvas, src_idx, outlet, dst_idx, inlet);
     canvas_dirty(canvas, 1);
 
     return mcp_wrap_content(mcp_ok_result());
@@ -539,10 +632,10 @@ static cJSON *mcp_tool_disconnect(cJSON *args)
 /* ---- tool: clear_patch ---- */
 static cJSON *mcp_tool_clear_patch(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
@@ -560,11 +653,11 @@ static cJSON *mcp_dispatch_tool(const char *name, cJSON *args);
 /* ---- tool: batch_update ---- */
 static cJSON *mcp_tool_batch_update(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
     cJSON *operations = cJSON_GetObjectItem(args, "operations");
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
     if (!cJSON_IsArray(operations))
@@ -588,7 +681,7 @@ static cJSON *mcp_tool_batch_update(cJSON *args)
         }
         /* inject patch_id into args if not present */
         if (tool_args && !cJSON_GetObjectItem(tool_args, "patch_id"))
-            cJSON_AddNumberToObject(tool_args, "patch_id", patch_id);
+            cJSON_AddStringToObject(tool_args, "patch_id", patch_id);
 
         cJSON *r = mcp_dispatch_tool(tool_name, tool_args);
         cJSON_AddItemToArray(results, r);
@@ -607,20 +700,20 @@ static cJSON *mcp_tool_batch_update(cJSON *args)
 /* ---- tool: send_message ---- */
 static cJSON *mcp_tool_send_message(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int object_id = (int)cJSON_GetNumberValue(
+    const char *object_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "object_id"));
     const char *message = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "message"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
     if (!message)
         return mcp_wrap_content(mcp_error_result("message is required"));
 
-    t_gobj *g = mcp_find_gobj(canvas, object_id);
+    t_gobj *g = mcp_find_gobj_by_id(canvas, object_id);
     if (!g)
         return mcp_wrap_content(mcp_error_result("object not found"));
 
@@ -656,16 +749,16 @@ static cJSON *mcp_tool_send_message(cJSON *args)
 /* ---- tool: send_bang ---- */
 static cJSON *mcp_tool_send_bang(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int object_id = (int)cJSON_GetNumberValue(
+    const char *object_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "object_id"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
-    t_gobj *g = mcp_find_gobj(canvas, object_id);
+    t_gobj *g = mcp_find_gobj_by_id(canvas, object_id);
     if (!g)
         return mcp_wrap_content(mcp_error_result("object not found"));
 
@@ -676,18 +769,18 @@ static cJSON *mcp_tool_send_bang(cJSON *args)
 /* ---- tool: set_number ---- */
 static cJSON *mcp_tool_set_number(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
-    int object_id = (int)cJSON_GetNumberValue(
+    const char *object_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "object_id"));
     double value = cJSON_GetNumberValue(
         cJSON_GetObjectItem(args, "value"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
-    t_gobj *g = mcp_find_gobj(canvas, object_id);
+    t_gobj *g = mcp_find_gobj_by_id(canvas, object_id);
     if (!g)
         return mcp_wrap_content(mcp_error_result("object not found"));
 
@@ -723,13 +816,14 @@ static cJSON *mcp_tool_get_dsp_state(cJSON *args)
 /* ---- tool: get_selection ---- */
 static cJSON *mcp_tool_get_selection(cJSON *args)
 {
-    int patch_id = (int)cJSON_GetNumberValue(
+    const char *patch_id = cJSON_GetStringValue(
         cJSON_GetObjectItem(args, "patch_id"));
 
-    t_glist *canvas = mcp_find_canvas(patch_id);
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
     if (!canvas)
         return mcp_wrap_content(mcp_error_result("patch not found"));
 
+    char idbuf[32];
     cJSON *result = cJSON_CreateArray();
     if (canvas->gl_editor)
     {
@@ -737,8 +831,8 @@ static cJSON *mcp_tool_get_selection(cJSON *args)
         for (sel = canvas->gl_editor->e_selection; sel; sel = sel->sel_next)
         {
             cJSON *item = cJSON_CreateObject();
-            cJSON_AddNumberToObject(item, "id",
-                canvas_getindex(canvas, sel->sel_what));
+            cJSON_AddStringToObject(item, "id",
+                mcp_ptr_id(sel->sel_what, idbuf, sizeof(idbuf)));
             cJSON_AddStringToObject(item, "class",
                 class_getname(pd_class(&sel->sel_what->g_pd)));
 
@@ -754,100 +848,44 @@ static cJSON *mcp_tool_get_selection(cJSON *args)
     return mcp_wrap_content(result);
 }
 
-/* ---- tool: list_externals ---- */
-/* list of known vanilla Pd object classes */
-static const char *mcp_vanilla_objects[] = {
-    /* math */
-    "+", "-", "*", "/", "%", "pow", "log", "exp", "abs", "sqrt",
-    "max", "min", "clip", "wrap", "mod", "div",
-    "sin", "cos", "tan", "atan", "atan2",
-    "random", "expr", "expr~", "fexpr~",
-    /* comparison / logic */
-    ">", "<", ">=", "<=", "==", "!=",
-    "&&", "||", "!",
-    /* flow control */
-    "bang", "b", "float", "f", "symbol", "int", "i",
-    "send", "s", "receive", "r",
-    "select", "sel", "route", "spigot", "swap", "change",
-    "trigger", "t", "until", "moses",
-    "pack", "unpack", "print", "makefilename",
-    /* time */
-    "delay", "del", "metro", "line", "timer", "pipe",
-    "realtime", "cputime",
-    /* list */
-    "list", "list append", "list prepend", "list split",
-    "list trim", "list length", "list fromsymbol", "list tosymbol",
-    "list store",
-    /* array / table */
-    "array", "array define", "array size", "array get", "array set",
-    "array sum", "array max", "array min", "array random",
-    "array quantile", "array sort",
-    "tabread", "tabread4", "tabwrite", "soundfiler",
-    "table",
-    /* text */
-    "text", "text define", "text get", "text set", "text insert",
-    "text delete", "text size", "text tolist", "text fromlist",
-    "text search", "text sequence",
-    /* misc */
-    "loadbang", "declare", "netsend", "netreceive",
-    "openpanel", "savepanel", "bag", "poly",
-    "key", "keyup", "keyname",
-    "value", "v",
-    /* I/O */
-    "adc~", "dac~",
-    "inlet", "inlet~", "outlet", "outlet~",
-    /* math~ */
-    "+~", "-~", "*~", "/~",
-    "max~", "min~", "clip~", "sqrt~", "rsqrt~",
-    "abs~", "wrap~", "pow~", "log~", "exp~",
-    "fft~", "ifft~", "rfft~", "rifft~",
-    /* oscillators / generators */
-    "osc~", "phasor~", "cos~", "noise~", "tabosc4~",
-    /* filters */
-    "lop~", "hip~", "bp~", "vcf~",
-    "rzero~", "rzero_rev~", "czero~", "czero_rev~",
-    "rpole~", "cpole~",
-    /* delay */
-    "delwrite~", "delread~", "delread4~",
-    /* conversion */
-    "sig~", "snapshot~", "bang~", "samphold~",
-    "threshold~", "env~",
-    "mtof", "ftom", "powtodb", "dbtopow", "rmstodb", "dbtorms",
-    /* audio */
-    "send~", "receive~", "s~", "r~",
-    "throw~", "catch~",
-    "block~", "switch~",
-    "readsf~", "writesf~",
-    "tabread~", "tabread4~", "tabwrite~", "tabplay~",
-    "tabsend~", "tabreceive~",
-    "line~", "vline~",
-    /* MIDI */
-    "notein", "noteout", "ctlin", "ctlout",
-    "pgmin", "pgmout", "bendin", "bendout",
-    "touchin", "touchout", "polytouchin", "polytouchout",
-    "midiin", "midiout", "sysexin",
-    "midirealtimein", "stripnote", "makenote",
-    /* GUI */
-    "bng", "tgl", "vsl", "hsl", "vradio", "hradio",
-    "vu", "cnv", "nbx",
-    /* subpatches */
-    "pd", "clone",
-    /* data */
-    "pointer", "get", "set", "append", "element",
-    "getsize", "setsize", "scalar", "struct",
-    "plot", "drawnumber", "drawsymbol", "drawpolygon",
-    "drawcurve", "filledpolygon", "filledcurve",
-    NULL
-};
+/* ---- tool: list_object_names ---- */
+/* names to skip (infrastructure classes, not user-facing) */
+static int mcp_skip_class(const char *name)
+{
+    /* skip internal infrastructure classes */
+    return (!strcmp(name, "objectmaker") ||
+            !strcmp(name, "canvasmaker") ||
+            !strcmp(name, "vinlet") ||
+            !strcmp(name, "voutlet") ||
+            !strcmp(name, "vinlet~") ||
+            !strcmp(name, "voutlet~") ||
+            !strcmp(name, "savestate") ||
+            !strcmp(name, "garray"));
+}
 
-static cJSON *mcp_tool_list_externals(cJSON *args)
+static cJSON *mcp_tool_list_object_names(cJSON *args)
 {
     (void)args;
-    cJSON *result = cJSON_CreateArray();
-    int i;
-    for (i = 0; mcp_vanilla_objects[i]; i++)
-        cJSON_AddItemToArray(result,
-            cJSON_CreateString(mcp_vanilla_objects[i]));
+    cJSON *internals = cJSON_CreateArray();
+    cJSON *externals = cJSON_CreateArray();
+    t_class *c;
+
+    for (c = class_getfirst(); c; c = c->c_next)
+    {
+        if (!c->c_patchable) continue;
+        const char *name = c->c_name->s_name;
+        if (mcp_skip_class(name)) continue;
+
+        /* c_externdir is &s_ (empty) for built-in classes */
+        if (c->c_externdir == &s_)
+            cJSON_AddItemToArray(internals, cJSON_CreateString(name));
+        else
+            cJSON_AddItemToArray(externals, cJSON_CreateString(name));
+    }
+
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddItemToObject(result, "internals", internals);
+    cJSON_AddItemToObject(result, "externals", externals);
     return mcp_wrap_content(result);
 }
 
@@ -859,31 +897,227 @@ static cJSON *mcp_tool_get_object_doc(cJSON *args)
     if (!name)
         return mcp_wrap_content(mcp_error_result("name is required"));
 
+    /* find class by name in the class list */
+    t_class *c;
+    for (c = class_getfirst(); c; c = c->c_next)
+    {
+        if (!strcmp(c->c_name->s_name, name))
+            break;
+    }
+
+    if (!c)
+        return mcp_wrap_content(mcp_error_result("class not found"));
+
     cJSON *result = cJSON_CreateObject();
     cJSON_AddStringToObject(result, "name", name);
+    cJSON_AddBoolToObject(result, "is_internal", c->c_externdir == &s_);
+    cJSON_AddBoolToObject(result, "is_signal", c->c_floatsignalin >= 0);
+    cJSON_AddBoolToObject(result, "is_patchable", c->c_patchable != 0);
+    cJSON_AddBoolToObject(result, "has_default_inlet", c->c_firstin != 0);
 
-    /* check if we know about this class */
-    t_symbol *sym = gensym(name);
-    /* try to get help file name by looking up the class */
-    if (sym->s_thing)
-    {
-        const char *helpname = class_gethelpname(pd_class(sym->s_thing));
-        if (helpname)
-            cJSON_AddStringToObject(result, "help_file", helpname);
-    }
+    const char *helpname = class_gethelpname(c);
+    if (helpname)
+        cJSON_AddStringToObject(result, "help_file", helpname);
 
-    /* check if it's in our vanilla list */
-    int found = 0;
+    if (c->c_externdir && c->c_externdir != &s_)
+        cJSON_AddStringToObject(result, "extern_dir",
+            c->c_externdir->s_name);
+
+    /* method list */
+    cJSON *methods = cJSON_CreateArray();
     int i;
-    for (i = 0; mcp_vanilla_objects[i]; i++)
+    for (i = 0; i < c->c_nmethod; i++)
     {
-        if (!strcmp(mcp_vanilla_objects[i], name))
+        t_methodentry *me = &c->c_methods[i];
+        cJSON *mobj = cJSON_CreateObject();
+        cJSON_AddStringToObject(mobj, "name",
+            me->me_name ? me->me_name->s_name : "?");
+
+        cJSON *margs = cJSON_CreateArray();
+        int j;
+        for (j = 0; j < MAXPDARG && me->me_arg[j] != A_NULL; j++)
         {
-            found = 1;
-            break;
+            const char *astr = mcp_atomtype_string(me->me_arg[j]);
+            if (!strcmp(astr, "(internal)")) break;
+            cJSON_AddItemToArray(margs, cJSON_CreateString(astr));
         }
+        cJSON_AddItemToObject(mobj, "args", margs);
+        cJSON_AddItemToArray(methods, mobj);
     }
-    cJSON_AddBoolToObject(result, "is_vanilla", found);
+    cJSON_AddItemToObject(result, "methods", methods);
+
+    return mcp_wrap_content(result);
+}
+
+/* ---- tool: save_patch ---- */
+static cJSON *mcp_tool_save_patch(cJSON *args)
+{
+    const char *patch_id = cJSON_GetStringValue(
+        cJSON_GetObjectItem(args, "patch_id"));
+    const char *path = cJSON_GetStringValue(
+        cJSON_GetObjectItem(args, "path"));
+
+    t_glist *canvas = mcp_find_canvas_by_id(patch_id);
+    if (!canvas)
+        return mcp_wrap_content(mcp_error_result("patch not found"));
+
+    /* get root canvas */
+    t_canvas *root = canvas;
+    while (root->gl_owner)
+        root = root->gl_owner;
+
+    if (path && *path)
+    {
+        /* save-as: extract dir and filename from path */
+        char dir[MAXPDSTRING], file[MAXPDSTRING];
+        strncpy(dir, path, MAXPDSTRING - 1);
+        dir[MAXPDSTRING - 1] = 0;
+
+        char *last_slash = strrchr(dir, '/');
+#ifdef _WIN32
+        {
+            char *last_backslash = strrchr(dir, '\\');
+            if (last_backslash > last_slash)
+                last_slash = last_backslash;
+        }
+#endif
+        if (last_slash)
+        {
+            strncpy(file, last_slash + 1, MAXPDSTRING - 1);
+            file[MAXPDSTRING - 1] = 0;
+            *last_slash = 0;
+        }
+        else
+        {
+            strncpy(file, dir, MAXPDSTRING - 1);
+            file[MAXPDSTRING - 1] = 0;
+            strcpy(dir, ".");
+        }
+
+        t_atom save_args[3];
+        SETSYMBOL(&save_args[0], gensym(file));
+        SETSYMBOL(&save_args[1], gensym(dir));
+        SETFLOAT(&save_args[2], 0);
+        pd_typedmess(&root->gl_pd, gensym("savetofile"), 3, save_args);
+    }
+    else
+    {
+        /* save to current file */
+        const char *name = root->gl_name ? root->gl_name->s_name : "";
+        if (!*name || !strncmp(name, "Untitled", 8))
+            return mcp_wrap_content(mcp_error_result(
+                "patch is untitled; provide a 'path' argument"));
+
+        t_atom save_args[3];
+        SETSYMBOL(&save_args[0], root->gl_name);
+        SETSYMBOL(&save_args[1], canvas_getdir(root));
+        SETFLOAT(&save_args[2], 0);
+        pd_typedmess(&root->gl_pd, gensym("savetofile"), 3, save_args);
+    }
+
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddBoolToObject(result, "success", 1);
+    return mcp_wrap_content(result);
+}
+
+/* ---- tool: new_patch ---- */
+static cJSON *mcp_tool_new_patch(cJSON *args)
+{
+    (void)args;
+    glob_menunew(NULL, gensym(""), gensym(""));
+
+    /* the new canvas is at the head of pd_canvaslist */
+    t_glist *newcanvas = pd_this->pd_canvaslist;
+    char idbuf[32];
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddBoolToObject(result, "success", 1);
+    if (newcanvas)
+        cJSON_AddStringToObject(result, "patch_id",
+            mcp_ptr_id(newcanvas, idbuf, sizeof(idbuf)));
+    return mcp_wrap_content(result);
+}
+
+/* ---- tool: get_audio_midi_settings ---- */
+static cJSON *mcp_tool_get_audio_midi_settings(cJSON *args)
+{
+    (void)args;
+    cJSON *result = cJSON_CreateObject();
+
+    /* audio settings */
+    t_audiosettings as;
+    sys_get_audio_settings(&as);
+
+    cJSON *audio = cJSON_CreateObject();
+    cJSON_AddNumberToObject(audio, "sample_rate", as.a_srate);
+    cJSON_AddNumberToObject(audio, "block_size", as.a_blocksize);
+    cJSON_AddNumberToObject(audio, "advance_ms", as.a_advance);
+    cJSON_AddBoolToObject(audio, "callback_mode", as.a_callback);
+    cJSON_AddBoolToObject(audio, "is_open", audio_isopen());
+
+    {
+        cJSON *indevs = cJSON_CreateArray();
+        int i;
+        for (i = 0; i < as.a_nindev; i++)
+        {
+            cJSON *dev = cJSON_CreateObject();
+            char devname[256];
+            sys_audiodevnumbertoname(0, as.a_indevvec[i],
+                devname, sizeof(devname));
+            cJSON_AddStringToObject(dev, "name", devname);
+            cJSON_AddNumberToObject(dev, "channels",
+                as.a_chindevvec[i]);
+            cJSON_AddItemToArray(indevs, dev);
+        }
+        cJSON_AddItemToObject(audio, "input_devices", indevs);
+    }
+
+    {
+        cJSON *outdevs = cJSON_CreateArray();
+        int i;
+        for (i = 0; i < as.a_noutdev; i++)
+        {
+            cJSON *dev = cJSON_CreateObject();
+            char devname[256];
+            sys_audiodevnumbertoname(1, as.a_outdevvec[i],
+                devname, sizeof(devname));
+            cJSON_AddStringToObject(dev, "name", devname);
+            cJSON_AddNumberToObject(dev, "channels",
+                as.a_choutdevvec[i]);
+            cJSON_AddItemToArray(outdevs, dev);
+        }
+        cJSON_AddItemToObject(audio, "output_devices", outdevs);
+    }
+    cJSON_AddItemToObject(result, "audio", audio);
+
+    /* MIDI settings */
+    cJSON *midi = cJSON_CreateObject();
+    {
+        int nmidiin, midiindev[MAXMIDIINDEV];
+        int nmidiout, midioutdev[MAXMIDIOUTDEV];
+        sys_get_midi_params(&nmidiin, midiindev, &nmidiout, midioutdev);
+
+        cJSON *midi_in = cJSON_CreateArray();
+        int i;
+        for (i = 0; i < nmidiin; i++)
+        {
+            char devname[256];
+            sys_mididevnumbertoname(0, midiindev[i],
+                devname, sizeof(devname));
+            cJSON_AddItemToArray(midi_in, cJSON_CreateString(devname));
+        }
+        cJSON_AddItemToObject(midi, "input_devices", midi_in);
+
+        cJSON *midi_out = cJSON_CreateArray();
+        for (i = 0; i < nmidiout; i++)
+        {
+            char devname[256];
+            sys_mididevnumbertoname(1, midioutdev[i],
+                devname, sizeof(devname));
+            cJSON_AddItemToArray(midi_out, cJSON_CreateString(devname));
+        }
+        cJSON_AddItemToObject(midi, "output_devices", midi_out);
+    }
+    cJSON_AddItemToObject(result, "midi", midi);
 
     return mcp_wrap_content(result);
 }
@@ -1039,14 +1273,20 @@ static cJSON *mcp_dispatch_tool(const char *name, cJSON *args)
         return mcp_tool_get_dsp_state(args);
     if (!strcmp(name, "get_selection"))
         return mcp_tool_get_selection(args);
-    if (!strcmp(name, "list_externals"))
-        return mcp_tool_list_externals(args);
+    if (!strcmp(name, "list_object_names"))
+        return mcp_tool_list_object_names(args);
     if (!strcmp(name, "get_object_doc"))
         return mcp_tool_get_object_doc(args);
     if (!strcmp(name, "open_patch"))
         return mcp_tool_open_patch(args);
     if (!strcmp(name, "get_pd_log"))
         return mcp_tool_get_pd_log(args);
+    if (!strcmp(name, "save_patch"))
+        return mcp_tool_save_patch(args);
+    if (!strcmp(name, "new_patch"))
+        return mcp_tool_new_patch(args);
+    if (!strcmp(name, "get_audio_midi_settings"))
+        return mcp_tool_get_audio_midi_settings(args);
 
     return mcp_wrap_content(mcp_error_result("unknown tool"));
 }

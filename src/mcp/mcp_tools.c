@@ -87,10 +87,13 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddStringToObject(tool, "name", "get_patch_state");
         cJSON_AddStringToObject(tool, "description",
             "Get the full state of a patch: all objects (id, class, text, "
-            "position, type, inlet/outlet counts) and all connections");
+            "position, type, inlet/outlet counts) and all connections. "
+            "Objects with is_subpatch=true can be passed as patch_id to "
+            "inspect their contents.");
         schema = mcp_make_schema(req, 1);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index from list_patches"));
+            mcp_prop_string("Patch or subpatch ID from list_patches or "
+                "get_patch_state"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
         cJSON_AddItemToArray(tools, tool);
     }
@@ -106,7 +109,7 @@ cJSON *mcp_build_tools_list(void)
             "the object name and arguments (e.g. 'osc~ 440')");
         schema = mcp_make_schema(req, 4);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "type",
             mcp_prop_string("Box type: obj, msg, text, floatatom, "
                 "symbolatom"));
@@ -129,9 +132,9 @@ cJSON *mcp_build_tools_list(void)
             "Delete an object from a patch");
         schema = mcp_make_schema(req, 2);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "object_id",
-            mcp_prop_int("Object index from get_patch_state"));
+            mcp_prop_string("Object ID from get_patch_state"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
         cJSON_AddItemToArray(tools, tool);
     }
@@ -145,9 +148,9 @@ cJSON *mcp_build_tools_list(void)
             "Change the text of an object (will re-instantiate it)");
         schema = mcp_make_schema(req, 3);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "object_id",
-            mcp_prop_int("Object index"));
+            mcp_prop_string("Object ID"));
         mcp_schema_add_prop(schema, "text",
             mcp_prop_string("New object text"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
@@ -163,9 +166,9 @@ cJSON *mcp_build_tools_list(void)
             "Move an object to a new position");
         schema = mcp_make_schema(req, 4);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "object_id",
-            mcp_prop_int("Object index"));
+            mcp_prop_string("Object ID"));
         mcp_schema_add_prop(schema, "x",
             mcp_prop_int("New X position"));
         mcp_schema_add_prop(schema, "y",
@@ -184,13 +187,13 @@ cJSON *mcp_build_tools_list(void)
             "Connect an outlet of one object to an inlet of another");
         schema = mcp_make_schema(req, 5);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "src_id",
-            mcp_prop_int("Source object index"));
+            mcp_prop_string("Source object ID"));
         mcp_schema_add_prop(schema, "outlet",
             mcp_prop_int("Outlet number (0-based)"));
         mcp_schema_add_prop(schema, "dst_id",
-            mcp_prop_int("Destination object index"));
+            mcp_prop_string("Destination object ID"));
         mcp_schema_add_prop(schema, "inlet",
             mcp_prop_int("Inlet number (0-based)"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
@@ -207,13 +210,13 @@ cJSON *mcp_build_tools_list(void)
             "Disconnect an outlet from an inlet");
         schema = mcp_make_schema(req, 5);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "src_id",
-            mcp_prop_int("Source object index"));
+            mcp_prop_string("Source object ID"));
         mcp_schema_add_prop(schema, "outlet",
             mcp_prop_int("Outlet number"));
         mcp_schema_add_prop(schema, "dst_id",
-            mcp_prop_int("Destination object index"));
+            mcp_prop_string("Destination object ID"));
         mcp_schema_add_prop(schema, "inlet",
             mcp_prop_int("Inlet number"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
@@ -231,7 +234,7 @@ cJSON *mcp_build_tools_list(void)
             "'args' (arguments object). Operations execute in order.");
         schema = mcp_make_schema(req, 2);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         {
             cJSON *ops = cJSON_CreateObject();
             cJSON_AddStringToObject(ops, "type", "array");
@@ -252,7 +255,7 @@ cJSON *mcp_build_tools_list(void)
             "Delete all objects in a patch");
         schema = mcp_make_schema(req, 1);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
         cJSON_AddItemToArray(tools, tool);
     }
@@ -268,9 +271,9 @@ cJSON *mcp_build_tools_list(void)
             "or 'bang')");
         schema = mcp_make_schema(req, 3);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "object_id",
-            mcp_prop_int("Object index"));
+            mcp_prop_string("Object ID"));
         mcp_schema_add_prop(schema, "message",
             mcp_prop_string("Message to send (e.g. 'bang', 'set 440')"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
@@ -286,9 +289,9 @@ cJSON *mcp_build_tools_list(void)
             "Send a bang to an object's first inlet");
         schema = mcp_make_schema(req, 2);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "object_id",
-            mcp_prop_int("Object index"));
+            mcp_prop_string("Object ID"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
         cJSON_AddItemToArray(tools, tool);
     }
@@ -302,9 +305,9 @@ cJSON *mcp_build_tools_list(void)
             "Send a float value to an object's first inlet");
         schema = mcp_make_schema(req, 3);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         mcp_schema_add_prop(schema, "object_id",
-            mcp_prop_int("Object index"));
+            mcp_prop_string("Object ID"));
         mcp_schema_add_prop(schema, "value",
             mcp_prop_number("Float value to send"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
@@ -343,16 +346,17 @@ cJSON *mcp_build_tools_list(void)
             "Get the currently selected objects in a patch");
         schema = mcp_make_schema(req, 1);
         mcp_schema_add_prop(schema, "patch_id",
-            mcp_prop_int("Patch index"));
+            mcp_prop_string("Patch ID"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
         cJSON_AddItemToArray(tools, tool);
     }
 
-    /* list_externals */
+    /* list_object_names */
     tool = cJSON_CreateObject();
-    cJSON_AddStringToObject(tool, "name", "list_externals");
+    cJSON_AddStringToObject(tool, "name", "list_object_names");
     cJSON_AddStringToObject(tool, "description",
-        "List all known built-in object classes");
+        "List all available object classes, split into internals "
+        "(built-in) and externals (loaded libraries)");
     schema = mcp_make_schema(NULL, 0);
     cJSON_AddItemToObject(tool, "inputSchema", schema);
     cJSON_AddItemToArray(tools, tool);
@@ -363,7 +367,8 @@ cJSON *mcp_build_tools_list(void)
         tool = cJSON_CreateObject();
         cJSON_AddStringToObject(tool, "name", "get_object_doc");
         cJSON_AddStringToObject(tool, "description",
-            "Get documentation info for a Pd object class");
+            "Get documentation for a Pd object class: accepted message "
+            "types, methods with argument types, signal status, and more");
         schema = mcp_make_schema(req, 1);
         mcp_schema_add_prop(schema, "name",
             mcp_prop_string("Object class name (e.g. 'osc~')"));
@@ -385,6 +390,46 @@ cJSON *mcp_build_tools_list(void)
         cJSON_AddItemToArray(tools, tool);
     }
 
+    /* save_patch */
+    {
+        const char *req[] = {"patch_id"};
+        tool = cJSON_CreateObject();
+        cJSON_AddStringToObject(tool, "name", "save_patch");
+        cJSON_AddStringToObject(tool, "description",
+            "Save a patch to disk. If the patch already has a filename, "
+            "saves in place. Provide 'path' for save-as to a new location.");
+        schema = mcp_make_schema(req, 1);
+        mcp_schema_add_prop(schema, "patch_id",
+            mcp_prop_string("Patch ID"));
+        mcp_schema_add_prop(schema, "path",
+            mcp_prop_string("Optional file path for save-as "
+                "(e.g. '/Users/me/patches/my_patch.pd')"));
+        cJSON_AddItemToObject(tool, "inputSchema", schema);
+        cJSON_AddItemToArray(tools, tool);
+    }
+
+    /* new_patch */
+    tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(tool, "name", "new_patch");
+    cJSON_AddStringToObject(tool, "description",
+        "Create a new empty patch window. Returns the new patch ID.");
+    schema = mcp_make_schema(NULL, 0);
+    cJSON_AddItemToObject(tool, "inputSchema", schema);
+    cJSON_AddItemToArray(tools, tool);
+
+    /* get_audio_midi_settings */
+    tool = cJSON_CreateObject();
+    cJSON_AddStringToObject(tool, "name", "get_audio_midi_settings");
+    cJSON_AddStringToObject(tool, "description",
+        "Get current audio and MIDI device settings (sample rate, "
+        "block size, input/output devices and channels, MIDI devices). "
+        "Read-only. To change audio or MIDI settings, ask the user to "
+        "open Pd's Audio Settings or MIDI Settings dialog from the "
+        "Media menu and configure manually.");
+    schema = mcp_make_schema(NULL, 0);
+    cJSON_AddItemToObject(tool, "inputSchema", schema);
+    cJSON_AddItemToArray(tools, tool);
+
     /* get_pd_log */
     {
         tool = cJSON_CreateObject();
@@ -397,7 +442,8 @@ cJSON *mcp_build_tools_list(void)
         mcp_schema_add_prop(schema, "n",
             mcp_prop_int("Number of most recent lines; omit for entire log"));
         mcp_schema_add_prop(schema, "k",
-            mcp_prop_string("Max log level: 'fatal','error','normal','debug','all'; omit for 'all'"));
+            mcp_prop_string("Max log level: 'fatal','error','normal',"
+                "'debug','all'; omit for 'all'"));
         cJSON_AddItemToObject(tool, "inputSchema", schema);
         cJSON_AddItemToArray(tools, tool);
     }
