@@ -265,7 +265,7 @@ static cJSON *handle_tools_call(cJSON *id, const char *original_request)
     if (!response)
     {
         fprintf(stderr,
-            "pd-vibes-mcp: cannot reach Pd-vibes at localhost:%d; "
+            "pd-mcp: cannot reach Pd-vibes at localhost:%d; "
             "make sure Pd-vibes is already running and MCP is enabled\n",
             proxy_port);
         return make_error(id, -32000,
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
             if (proxy_port < 1 || proxy_port > 65535)
             {
                 fprintf(stderr,
-                    "pd-vibes-mcp: invalid port %d\n", proxy_port);
+                    "pd-mcp: invalid port %d\n", proxy_port);
                 return 1;
             }
         }
@@ -374,8 +374,8 @@ int main(int argc, char **argv)
                  strcmp(argv[i], "-h") == 0)
         {
             fprintf(stderr,
-                "pd-vibes-mcp: MCP stdio proxy for Pd-vibes\n"
-                "Usage: pd-vibes-mcp [--port N]\n"
+                "pd-mcp: MCP stdio proxy for Pd-vibes\n"
+                "Usage: pd-mcp [--port N]\n"
                 "  --port N   Pd-vibes MCP server port (default: %d)\n",
                 MCP_DEFAULT_PORT);
             return 0;
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
 #endif
 
-    fprintf(stderr, "pd-vibes-mcp: proxy started (port %d)\n",
+    fprintf(stderr, "pd-mcp: proxy started (port %d)\n",
         proxy_port);
 
     /* read lines from stdin, process each as JSON-RPC */
@@ -406,6 +406,6 @@ int main(int argc, char **argv)
     }
 
     free(line);
-    fprintf(stderr, "pd-vibes-mcp: stdin closed, exiting\n");
+    fprintf(stderr, "pd-mcp: stdin closed, exiting\n");
     return 0;
 }

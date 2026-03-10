@@ -1,7 +1,7 @@
 /* mcp_tools.h - Shared MCP tool definitions and protocol constants
  *
  * Used by both the MCP server (linked into Pd) and the standalone
- * proxy binary (pd-vibes-mcp). Depends only on cJSON, no Pd internals.
+ * proxy binary (pd-mcp). Depends only on cJSON, no Pd internals.
  */
 
 #ifndef MCP_TOOLS_H

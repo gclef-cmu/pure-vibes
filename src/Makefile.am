@@ -52,7 +52,7 @@ pd_transformed=$(shell echo pd | sed -e '$(transform)')
 ##### Files, Binaries, & Libs #####
 
 # pd core & utils
-bin_PROGRAMS = pd pdsend pdreceive pd-vibes-mcp
+bin_PROGRAMS = pd pdsend pdreceive pd-mcp
 
 if LIBPD
 lib_LTLIBRARIES = libpd.la
@@ -68,9 +68,9 @@ pdsend_SOURCES = u_pdsend.c s_net.c
 pdreceive_SOURCES = u_pdreceive.c s_net.c
 pd_watchdog_SOURCES = s_watchdog.c
 
-pd_vibes_mcp_SOURCES = mcp/mcp_proxy.c mcp/mcp_tools.c mcp/cJSON.c
-pd_vibes_mcp_CFLAGS = @PD_CFLAGS@ -I$(srcdir)/mcp
-pd_vibes_mcp_LDFLAGS = @PD_LDFLAGS@
+pd_mcp_SOURCES = mcp/mcp_proxy.c mcp/mcp_tools.c mcp/cJSON.c
+pd_mcp_CFLAGS = @PD_CFLAGS@ -I$(srcdir)/mcp
+pd_mcp_LDFLAGS = @PD_LDFLAGS@
 libpd_la_SOURCES = \
     z_libpd.c \
     z_hooks.c \
@@ -499,7 +499,7 @@ convenience-links: $(libpdbin_PROGRAMS) $(bin_PROGRAMS)
 	$(LN_S) $(top_builddir)/src/pdreceive$(EXEEXT) $(top_builddir)/bin/pdreceive$(EXEEXT)
 	$(LN_S) $(top_srcdir)/tcl/pd-gui.in $(top_builddir)/bin/pd-gui
 	test -e $(top_builddir)/src/pd-watchdog$(EXEEXT) && $(LN_S) $(top_builddir)/src/pd-watchdog$(EXEEXT) $(top_builddir)/bin/pd-watchdog$(EXEEXT) || true
-	test -e $(top_builddir)/src/pd-vibes-mcp$(EXEEXT) && $(LN_S) $(top_builddir)/src/pd-vibes-mcp$(EXEEXT) $(top_builddir)/bin/pd-vibes-mcp$(EXEEXT) || true
+	test -e $(top_builddir)/src/pd-mcp$(EXEEXT) && $(LN_S) $(top_builddir)/src/pd-mcp$(EXEEXT) $(top_builddir)/bin/pd-mcp$(EXEEXT) || true
 
 clean-local:
 	rm -rf $(top_builddir)/bin

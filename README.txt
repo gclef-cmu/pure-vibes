@@ -1,193 +1,65 @@
-# Pure Vibes (Pd-vibes)
+# Pure Data
 
-**Pure Vibes is an unofficial, experimental fork of [Pure Data](https://puredata.info) (Pd 0.56.2) with a native MCP server built in.** It is vibe-coded and intended for experimental use only. It is not affiliated with or endorsed by Miller Puckette or the Pure Data community.
+This is the README file for Pd, a free real-time computer music system.
 
-Pure Vibes lets AI agents (Claude, ChatGPT, etc.) read, create, and manipulate Pd patches in real time through the [Model Context Protocol](https://modelcontextprotocol.io). The built-in MCP server runs over HTTP inside Pd, and the app also ships with a tiny `pd-vibes-mcp` proxy binary so Claude Desktop can talk to it over stdio.
+This is *not* the README for Pd-vibes, which has been moved to README.md
 
----
+## Getting Pd
 
-## Quick Start (for musicians)
+You can get Pd for Linux, macOS, or Microsoft Windows from:
 
-### 1. Install Pd-vibes
+    http://msp.ucsd.edu/software.html
 
-Download the latest release for your platform from the **[Releases](../../releases)** tab:
+or from the Pure Data community site:
 
-- **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications
-- **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `pd.exe`
-- **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd`
+    https://puredata.info
 
-Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP). It is off by default. Enable it when you want AI tools to connect.
+Installation instructions are in INSTALL.txt and the Pd Manual at:
 
-### 2. Connect to Claude Desktop
+    http://msp.ucsd.edu/Pd_documentation/index.htm
 
-Add this to your Claude Desktop config file:
+If you download and unpack Pd, you will also find the Manual locally
+in the file "doc/1.manual/index.htm".
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+Linux (or FreeBSD): In some Linux installations you can download Pd via "apt-get
+install puredata" or "dnf install puredata"; otherwise you can download
+the source and compile it as described in INSTALL.txt.
 
-**macOS config:**
-```json
-{
-  "mcpServers": {
-    "pure-vibes": {
-      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd-vibes-mcp"
-    }
-  }
-}
-```
+Apple macOS: Pd binaries are distributed as a "tar.gz" file. The web browser
+will probably download this archive into your Downloads folder. Double click
+to extract the archived Mac app which you can then run and/or drag into your
+Applications folder.
 
-**Linux config:**
-```json
-{
-  "mcpServers": {
-    "pure-vibes": {
-      "command": "pd-vibes-mcp"
-    }
-  }
-}
-```
+Microsoft Windows: Pd binaries are distributed as a self-extracting executable
+or as a "zip" file.
 
-Restart Claude Desktop. Pure Vibes should appear as a connected MCP server.
-The proxy always responds to `initialize` and `tools/list`; when you make a tool call, it will connect to Pd-vibes on `http://127.0.0.1:4330/mcp` and try to launch Pd-vibes automatically if needed.
+If you have questions about Pd or if you wish to be notified of releases,
+you can browse and/or join the Pd mailing list:
 
-### 3. Try it out
+    https://lists.puredata.info/listinfo
 
-Open a new patch in Pd-vibes (Cmd+N / Ctrl+N), then ask Claude:
+Many extensions to Pd are available, for instance to add video and 3D graphics.
+The easiest way to get these is to use the "Find externals" command in Pd's Help
+menu.
 
-> "Build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
+## Copyright
 
-Claude will use the MCP tools to create objects, wire them together, and you will see the patch build itself in real time.
-
-Other things to try:
-
-> "What patches do I have open?"
-
-> "Turn on DSP"
-
-> "Add a reverb to my patch"
-
-### 4. Connect to other MCP clients
-
-Pd-vibes supports two MCP connection modes:
-
-- **Claude Desktop via stdio proxy**: Point Claude at `pd-vibes-mcp`. The proxy speaks stdio to Claude and forwards tool calls to Pd-vibes over HTTP on localhost.
-- **Direct Streamable HTTP**: Pd-vibes listens on `http://localhost:4330/mcp` when MCP is enabled. Any MCP client that supports Streamable HTTP can connect directly.
-
----
-
-## MCP Configuration
-
-- **Toggle**: Check/uncheck "MCP" in the main Pd window, or use the Media menu
-- **Port**: Media > MCP Port... (default: 4330). CLI: `-mcpport 4331`
-- **Network**: Media > MCP Allow Network (default: localhost only). CLI: `-mcpnetwork`
-- **Default state**: MCP is off until you enable it via the checkbox or `-mcpport`
-- **Disable**: Uncheck "MCP" or start with `-nomcp`
-
----
-
-## Building from Source
-
-### macOS (arm64 / x86_64)
-
-Install Xcode command line tools and Homebrew, then:
-
-```sh
-brew install autoconf automake libtool gettext
-LIBTOOLIZE=$(brew --prefix libtool)/bin/glibtoolize ./autogen.sh
-./configure
-make -j$(sysctl -n hw.logicalcpu)
-```
-
-To create an app bundle:
-
-```sh
-make app
-# Creates Pd-vibes-0.56.2.app in the build directory
-```
-
-### Linux (Debian/Ubuntu)
-
-```sh
-sudo apt-get install autoconf automake libtool gettext \
-    libasound2-dev libjack-jackd2-dev tcl-dev tk-dev
-./autogen.sh
-./configure
-make -j$(nproc)
-sudo make install
-```
-
-### Windows (MSYS2)
-
-Install [MSYS2](https://www.msys2.org), open a MINGW64 shell, then:
-
-```sh
-pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-autotools make autoconf automake libtool
-./autogen.sh
-./configure
-make -j$(nproc)
-```
-
-For more detailed build instructions, see INSTALL.txt.
-
----
-
-## What the MCP Server Can Do
-
-The built-in MCP server exposes 19 tools:
-
-| Category | Tools |
-|----------|-------|
-| Patches | `list_patches`, `get_patch_state`, `open_patch` |
-| Objects | `create_object`, `delete_object`, `modify_object`, `move_object` |
-| Connections | `connect`, `disconnect` |
-| Batch | `batch_update`, `clear_patch` |
-| Runtime | `send_message`, `send_bang`, `set_number` |
-| DSP | `set_dsp`, `get_dsp_state` |
-| Selection | `get_selection` |
-| Docs | `list_externals`, `get_object_doc` |
-
----
-
-## About Pure Data
-
-Pure Data (Pd) is a free, open-source visual programming language for multimedia,
-created by Miller Puckette. For information about vanilla Pd, visit:
-
-- https://puredata.info
-- http://msp.ucsd.edu/software.html
-
----
-
-## Copyright & Licensing
-
-### Pure Data
-
-Except as otherwise noted, all files in the Pd distribution are:
+Except as otherwise noted, all files in the Pd distribution are
 
     Copyright (c) 1997-2024 Miller Puckette and others.
 
-Licensed under the **BSD 3-Clause License**. See LICENSE.txt for details.
+For information on usage and redistribution, and for a DISCLAIMER OF ALL
+WARRANTIES, see LICENSE.txt included in the Pd distribution.
+(Note that Tcl/Tk, expr, and some other files are copyrighted separately).
 
-### cJSON (embedded JSON library)
+## Acknowledgements
 
-The files `src/mcp/cJSON.c` and `src/mcp/cJSON.h` are from the
-[cJSON](https://github.com/DaveGamble/cJSON) project (v1.7.18):
-
-    Copyright (c) 2009-2017 Dave Gamble and cJSON contributors.
-
-Licensed under the **MIT License**. The full license text is included at the
-top of each file.
-
-### MCP Server Code
-
-The files `src/mcp/mcp_server.c`, `src/mcp/mcp_server.h`,
-`src/mcp/mcp_tools.c`, `src/mcp/mcp_tools.h`, and `src/mcp/mcp_proxy.c`
-are new additions to this fork, written for the Pure Vibes project.
-They are released under the same
-**BSD 3-Clause License** as the rest of Pure Data.
-
-### Compatibility
-
-The BSD 3-Clause (Pd) and MIT (cJSON) licenses are fully compatible.
-Both are permissive open-source licenses that allow free use, modification,
-and redistribution.
+Thanks to Harry Castle, Krzysztof Czaja, Mark Danks, Christian Feldbauer,
+Guenter Geiger, Kerry Hagan, Trevor Johnson, Fernando Lopez-Lezcano, Adam
+Lindsay, Karl MacMillan, Thomas Musil, Toshinori Ohkouchi, Winfried Ritsch,
+Vibeke Sorensen, Rand Steiger, Hans-Christoph Steiner, Shahrokh Yadegari, Dan
+Wilcox, David Zicarelli, IOhannes m zmoelnig, Christof Ressi, Antoine Rousseau,
+Alexandre Torres Porres, Claude Heiland-Allen, Roman Haefeli, Lucarda, Chris
+McCormick, Seb Shader and probably many others for contributions of code,
+documentation, ideas, and expertise. This work has received support from Intel,
+Keith McMillen Instruments, ZKM, IEM, and UCSD.
