@@ -289,6 +289,12 @@ static cJSON *mcp_tool_list_patches(cJSON *args)
     char idbuf[32];
     for (gl = pd_this->pd_canvaslist; gl; gl = gl->gl_next)
     {
+            /* skip Pd's internal template patches */
+        const char *name = gl->gl_name ? gl->gl_name->s_name : "";
+        if (!strcmp(name, "_float_template") ||
+            !strcmp(name, "_float_array_template") ||
+            !strcmp(name, "_text_template"))
+                continue;
         cJSON *patch = cJSON_CreateObject();
         cJSON_AddStringToObject(patch, "id",
             mcp_ptr_id(gl, idbuf, sizeof(idbuf)));
@@ -1024,7 +1030,12 @@ static cJSON *mcp_tool_save_patch(cJSON *args)
 static cJSON *mcp_tool_new_patch(cJSON *args)
 {
     (void)args;
-    glob_menunew(NULL, gensym(""), gensym(""));
+    /* must pass a valid directory so canvas_new initializes gl_env;
+       otherwise canvas_getenv() crashes on the ownerless top-level patch */
+    char cwd[MAXPDSTRING];
+    if (!getcwd(cwd, sizeof(cwd)))
+        strcpy(cwd, ".");
+    glob_menunew(NULL, gensym("Untitled"), gensym(cwd));
 
     /* the new canvas is at the head of pd_canvaslist */
     t_glist *newcanvas = pd_this->pd_canvaslist;
