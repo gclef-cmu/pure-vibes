@@ -2,7 +2,7 @@
 
 This is the README file for Pd, a free real-time computer music system.
 
-This is *not* the README for Pd-vibes, which has been moved to README.md
+This is *not* the README for Pd-vibes, which is README.md
 
 ## Getting Pd
 
