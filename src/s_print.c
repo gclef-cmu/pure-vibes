@@ -176,12 +176,12 @@ static void dologpost(const void *object, const int level, const char *s)
 {
     char upbuf[MAXPDSTRING];
     upbuf[MAXPDSTRING-1]=0;
+    if (sys_logbuffer_hook)
+        (*sys_logbuffer_hook)(level, s);
         /* if it's a verbose message and we aren't set to 'verbose' just do
             nothing */
     if (level >= PD_VERBOSE && !sys_verbose)
         return;
-    if (sys_logbuffer_hook)
-        (*sys_logbuffer_hook)(level, s);
     // what about sys_printhook_verbose ?
     if (STUFF->st_printhook)
     {

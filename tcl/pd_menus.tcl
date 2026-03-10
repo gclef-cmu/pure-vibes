@@ -322,20 +322,6 @@ proc ::pd_menus::build_media_menu {mymenu} {
 }
 
 proc ::pd_menus::mcp_port_dialog {} {
-    if {![info exists ::mcp_port]} {
-        set ::mcp_port 4330
-    }
-    set result [tk_dialog .mcpport [_ "MCP Port"] \
-        [_ "Enter MCP server port:"] "" 0 "OK" "Cancel"]
-    if {$result == 0} {
-        set port [::pd_menus::mcp_port_input]
-        if {$port ne ""} {
-            ::pd_menucommands::scheduleAction pdsend "pd mcp-port $port"
-        }
-    }
-}
-
-proc ::pd_menus::mcp_port_input {} {
     set w .mcpportinput
     catch {destroy $w}
     toplevel $w
