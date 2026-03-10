@@ -16,9 +16,9 @@ export MINGW_PREFIX
 
 # build a standalone application directory on Windows
 app:
-	rm -rf $(top_builddir)/pd-$(VERSION)
-	$(SH) $(top_srcdir)/msw/msw-app.sh ${msw_strip} --sources --builddir $(top_builddir) $(VERSION)
-	mv $(top_builddir)/msw/pd-$(VERSION) $(top_builddir)
+	rm -rf $(top_builddir)/pd-vibes
+	$(SH) $(top_srcdir)/msw/msw-app.sh ${msw_strip} --sources --builddir $(top_builddir)
+	mv $(top_builddir)/msw/pd-vibes $(top_builddir)
 
 else
 

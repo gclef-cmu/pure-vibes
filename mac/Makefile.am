@@ -25,9 +25,9 @@ pkgdata_DATA += \
 
 # build an app bundle on OSX
 app:
-	rm -rf $(abs_top_builddir)/Pd-vibes-$(VERSION).app
-	$(SH) $(top_srcdir)/mac/osx-app.sh --builddir $(abs_top_builddir) $(VERSION)
-	mv $(abs_top_builddir)/mac/Pd-vibes-$(VERSION).app $(abs_top_builddir)
+	rm -rf $(abs_top_builddir)/Pd-vibes.app
+	$(SH) $(top_srcdir)/mac/osx-app.sh --builddir $(abs_top_builddir)
+	mv $(abs_top_builddir)/mac/Pd-vibes.app $(abs_top_builddir)
 
 else
 

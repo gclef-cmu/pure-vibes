@@ -33,16 +33,9 @@ jobs:
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Create app bundle
-        working-directory: .
         run: |
-          cd mac
-          sh osx-app.sh --builddir $(pwd)/.. $(cat ../configure.ac | grep AC_INIT | sed 's/.*\[//;s/\].*//')
-          cd ..
-          # Find the .app bundle
-          APP=$(ls -d mac/Pd-vibes*.app 2>/dev/null || ls -d Pd-vibes*.app 2>/dev/null)
-          if [ -z "$APP" ]; then echo "No app bundle found"; exit 1; fi
-          # Create a zip for distribution
-          ditto -c -k --sequesterRsrc --keepParent "$APP" Pd-vibes-macos.zip
+          make app
+          ditto -c -k --sequesterRsrc --keepParent Pd-vibes.app Pd-vibes-macos.zip
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4

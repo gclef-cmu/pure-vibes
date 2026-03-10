@@ -33,7 +33,19 @@ Add this to your Claude Desktop config file:
 {
   "mcpServers": {
     "Pure Vibes": {
-      "command": "/Applications/Pd-vibes-0.56.2.app/Contents/Resources/bin/pd-mcp"
+      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd-mcp"
+    }
+  }
+}
+```
+
+**Windows config:**
+
+```json
+{
+  "mcpServers": {
+    "Pure Vibes": {
+      "command": "C:\\Program Files\\pd-vibes\\bin\\pd-mcp.exe"
     }
   }
 }
@@ -57,7 +69,7 @@ Restart Claude Desktop. Pure Vibes should appear as a connected MCP server.
 
 Open Pd-vibes, click to enable "MCP" in the main window, then ask Claude:
 
-> "Build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
+> "Using Pure Vibes, build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
 
 Claude will use the MCP tools to create objects, wire them together, and you will see the patch build itself in real time.
 
@@ -125,7 +137,7 @@ To create an app bundle:
 
 ```sh
 make app
-# Creates Pd-vibes-0.56.2.app in the build directory
+# Creates Pd-vibes.app in the build directory
 ```
 
 ### Linux (Debian/Ubuntu)
