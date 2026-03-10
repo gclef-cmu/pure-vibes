@@ -21,9 +21,11 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <direct.h>
 typedef int socklen_t;
 #define close(fd) closesocket(fd)
 #define strncasecmp _strnicmp
+#define getcwd _getcwd
 #define MCP_SOCKET_ERROR SOCKET_ERROR
 #else
 #include <sys/socket.h>
