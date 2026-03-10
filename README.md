@@ -12,7 +12,7 @@ Pure Vibes integrates a [Model Context Protocol (MCP)](https://modelcontextproto
 
 Download the latest release for your platform from the **[Releases](../../releases)** tab:
 
-- **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications
+- **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications. On first launch, macOS may warn that it "can't check the app for malicious software." Right-click the app, choose **Open**, then click **Open** again to bypass this.
 - **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `bin\pd.exe`
 - **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd`
 
