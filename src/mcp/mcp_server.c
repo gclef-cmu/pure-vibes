@@ -479,6 +479,16 @@ static cJSON *mcp_tool_create_object(cJSON *args)
     for (g = canvas->gl_list; g; g = g->g_next)
         last = g;
 
+    /* if we just created a subpatch, close its window — subcanvas_new
+       opens it by default for interactive use, but MCP callers don't
+       need it and the open window can cause crashes on GUI events */
+    if (last && pd_class(&last->g_pd) == canvas_class)
+    {
+        t_glist *sub = (t_glist *)last;
+        if (sub->gl_havewindow)
+            canvas_vis(sub, 0);
+    }
+
     char idbuf[32];
     cJSON *result = cJSON_CreateObject();
     cJSON_AddBoolToObject(result, "success", 1);
