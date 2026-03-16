@@ -1873,9 +1873,16 @@ void canvas_map(t_canvas *x, t_floatarg f);
     /* we call this when we want the window to become visible, mapped, and
        in front of all windows; or with "f" zero, when we want to get rid of
        the window. */
+/* defined in mcp_server.c — when set, skip opening new windows */
+extern int mcp_suppress_vis;
+
 void canvas_vis(t_canvas *x, t_floatarg f)
 {
     int flag = (f != 0);
+    /* MCP object creation suppresses subpatch window opening to avoid
+       macOS AppKit NSMenuBar crash on rapid window create/destroy */
+    if (flag && mcp_suppress_vis && x->gl_owner)
+        return;
     if (flag)
     {
             /* If a subpatch has GOP/gl_isgraph set, then it will have

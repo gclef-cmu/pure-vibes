@@ -39,6 +39,11 @@ typedef int socklen_t;
 #define MCP_SOCKET_ERROR (-1)
 #endif
 
+/* when set, canvas_vis() skips opening new windows — this prevents
+   subcanvas_new() from flashing a Tk window during MCP object creation,
+   which triggers a macOS AppKit NSMenuBar crash on rapid open/close */
+int mcp_suppress_vis = 0;
+
 /* ---- forward declarations for Pd internal functions ---- */
 extern void canvas_obj(t_glist *gl, t_symbol *s, int argc, t_atom *argv);
 extern void canvas_msg(t_glist *gl, t_symbol *s, int argc, t_atom *argv);
@@ -451,6 +456,10 @@ static cJSON *mcp_tool_create_object(cJSON *args)
 
     int dspwas = canvas_suspend_dsp();
 
+    /* suppress canvas_vis() during object creation so that subcanvas_new()
+       doesn't open a Tk window (which causes macOS AppKit crashes) */
+    mcp_suppress_vis = 1;
+
     if (!strcmp(type, "obj"))
         canvas_obj(canvas, gensym("obj"), argc, argv);
     else if (!strcmp(type, "msg"))
@@ -463,11 +472,13 @@ static cJSON *mcp_tool_create_object(cJSON *args)
         canvas_symbolatom(canvas, gensym("symbolatom"), argc, argv);
     else
     {
+        mcp_suppress_vis = 0;
         binbuf_free(b);
         canvas_resume_dsp(dspwas);
         return mcp_wrap_content(mcp_error_result("unknown type"));
     }
 
+    mcp_suppress_vis = 0;
     canvas_resume_dsp(dspwas);
     binbuf_free(b);
 
@@ -478,16 +489,6 @@ static cJSON *mcp_tool_create_object(cJSON *args)
     t_gobj *g;
     for (g = canvas->gl_list; g; g = g->g_next)
         last = g;
-
-    /* if we just created a subpatch, close its window — subcanvas_new
-       opens it by default for interactive use, but MCP callers don't
-       need it and the open window can cause crashes on GUI events */
-    if (last && pd_class(&last->g_pd) == canvas_class)
-    {
-        t_glist *sub = (t_glist *)last;
-        if (sub->gl_havewindow)
-            canvas_vis(sub, 0);
-    }
 
     char idbuf[32];
     cJSON *result = cJSON_CreateObject();
