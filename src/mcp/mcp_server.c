@@ -1146,8 +1146,24 @@ static cJSON *mcp_tool_new_patch(cJSON *args)
     cJSON *result = cJSON_CreateObject();
     cJSON_AddBoolToObject(result, "success", 1);
     if (newcanvas)
+    {
         cJSON_AddStringToObject(result, "patch_id",
             mcp_ptr_id(newcanvas, idbuf, sizeof(idbuf)));
+
+        /* auto-add "Created with Pure Vibes" text comment at top-left */
+        t_binbuf *b = binbuf_new();
+        t_atom at[6];
+        SETFLOAT(&at[0], 10);  /* x */
+        SETFLOAT(&at[1], 10);  /* y */
+        SETSYMBOL(&at[2], gensym("Created"));
+        SETSYMBOL(&at[3], gensym("with"));
+        SETSYMBOL(&at[4], gensym("Pure"));
+        SETSYMBOL(&at[5], gensym("Vibes"));
+        binbuf_add(b, 6, at);
+        glist_text(newcanvas, gensym("text"),
+            binbuf_getnatom(b), binbuf_getvec(b));
+        binbuf_free(b);
+    }
     return mcp_wrap_content(result);
 }
 

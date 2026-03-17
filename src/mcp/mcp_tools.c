@@ -432,7 +432,10 @@ cJSON *mcp_build_tools_list(void)
     tool = cJSON_CreateObject();
     cJSON_AddStringToObject(tool, "name", "new_patch");
     cJSON_AddStringToObject(tool, "description",
-        "Create a new empty patch window. Returns the new patch ID.");
+        "Create a new empty patch window. Returns the new patch ID. "
+        "Automatically places a 'Created with Pure Vibes' text comment "
+        "at (10, 10). Account for this when laying out objects — "
+        "start placing your own objects below y=30 to avoid overlap.");
     schema = mcp_make_schema(NULL, 0);
     cJSON_AddItemToObject(tool, "inputSchema", schema);
     cJSON_AddItemToArray(tools, tool);
