@@ -20,15 +20,36 @@ Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP)
 
 ### 2. Connect to AI agent
 
-Download and install an AI agent tool such as [Claude Desktop](https://code.claude.com/docs/en/desktop-quickstart#install). Other agents that support MCP will work as well with similar instructions.
+Download and install [Claude Desktop](https://code.claude.com/docs/en/desktop-quickstart#install). Other agents that support MCP will work as well with similar instructions.
 
-Connect the MCP to Claude Desktop (or other AI agent) by modifying the config file, following the instructions below.
+**macOS — easy setup (recommended):**
 
-Once you have updated the config file, **fully quit and re-open Claude Desktop** (just closing the window is not enough — use File > Quit on Windows/Linux or Cmd+Q on macOS). After restarting, Pure Vibes should appear as a connected MCP server.
+Open the **Terminal** app (find it in Applications > Utilities, or search with Spotlight), paste this command, and press Enter:
 
-**macOS config:**
+```sh
+mkdir -p ~/Library/Application\ Support/Claude && echo '{
+  "mcpServers": {
+    "Pure Vibes": {
+      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd-mcp"
+    }
+  }
+}' > ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
 
-**Claude Path**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+> **Note:** This will replace an existing Claude config file. If you already use other MCP servers with Claude, see the manual setup below instead.
+
+Then **fully quit and re-open Claude Desktop** using **Cmd+Q** (just closing the window isn't enough). After restarting, Pure Vibes should appear as a connected MCP server.
+
+<details>
+<summary><strong>macOS — manual setup</strong> (if you already have a Claude config file)</summary>
+
+Open this file in a text editor (create it if it doesn't exist):
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`
+
+> **Tip:** In Finder, press **Cmd+Shift+G** and paste `~/Library/Application Support/Claude/` to open the folder.
+
+Add the Pure Vibes entry to `"mcpServers"`:
 
 ```json
 {
@@ -40,9 +61,14 @@ Once you have updated the config file, **fully quit and re-open Claude Desktop**
 }
 ```
 
-**Windows config:**
+Fully quit and re-open Claude Desktop (**Cmd+Q**).
 
-**Claude Path**: `%APPDATA%\Claude\claude_desktop_config.json`
+</details>
+
+<details>
+<summary><strong>Windows setup</strong></summary>
+
+Edit `%APPDATA%\Claude\claude_desktop_config.json` (create it if it doesn't exist):
 
 ```json
 {
@@ -54,17 +80,58 @@ Once you have updated the config file, **fully quit and re-open Claude Desktop**
 }
 ```
 
-**Linux config:**
+Fully quit and re-open Claude Desktop (File > Quit).
+
+</details>
+
+<details>
+<summary><strong>Linux (Pure Vibes on Linux, Claude Desktop on Mac/Windows)</strong></summary>
+
+There is no native Claude Desktop client for Linux. If you have an agent that runs natively on Linux, you can simply register the `pd-mcp` binary as an MCP server.
+
+Alternatively, you can run **Pure Vibes on your Linux machine** and control it via **Claude Desktop on your Mac or Windows machine** on the same local network.
+
+**On the Linux machine:**
+
+1. Launch Pd-vibes and enable MCP (check the "MCP" box in the main window).
+2. Allow network connections — in the Media menu, enable **MCP Allow Network** (or launch with `-mcpnetwork`). This lets Claude Desktop reach Pd-vibes from another machine.
+3. Note your Linux machine's local IP address (e.g. `192.168.1.42`) — you'll need it in the next step.
+
+**On your Mac or Windows machine (where Claude Desktop runs):**
+
+Point Claude Desktop at `pd-mcp` with the `--host` flag so it forwards tool calls to your Linux machine. The `pd-mcp` binary ships with Pd-vibes for all platforms — use the one from whichever Pd-vibes install you have on the host machine.
+
+macOS config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "Pure Vibes": {
-      "command": "pd-mcp"
+    "Pure Vibes (Remote)": {
+      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd-mcp",
+      "args": ["--host", "192.168.1.42"]
     }
   }
 }
 ```
+
+Windows config (`%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "Pure Vibes (Remote)": {
+      "command": "C:\\Program Files\\pd-vibes\\bin\\pd-mcp.exe",
+      "args": ["--host", "192.168.1.42"]
+    }
+  }
+}
+```
+
+Replace `192.168.1.42` with your Linux machine's actual IP address. If you changed the MCP port from the default (4330), also add `"--port", "YOURPORT"` to `args`.
+
+Fully quit and re-open Claude Desktop after saving the config.
+
+</details>
 
 ### 3. Try it out
 
