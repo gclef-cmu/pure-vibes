@@ -85,11 +85,56 @@ Fully quit and re-open Claude Desktop (File > Quit).
 </details>
 
 <details>
-<summary><strong>Linux setup</strong></summary>
+<summary><strong>Linux setup — Claude Code (recommended)</strong></summary>
 
-There is no native Claude Desktop client for Linux. If you have an agent that runs natively on Linux, you can simply register the `pd-mcp` binary as an MCP server.
+[Claude Code](https://claude.ai/code) is Anthropic's official CLI and runs natively on Linux, making it the easiest way to use Pure Vibes on Linux.
 
-Alternatively, you can run **Pure Vibes on your Linux machine** and control it via **Claude Desktop on your Mac or Windows machine** on the same local network.
+**1. Build Pure Vibes from source** (if you haven't already):
+
+```sh
+sudo apt-get install -y autoconf automake libtool gettext \
+    libasound2-dev libjack-jackd2-dev tcl-dev tk-dev
+./autogen.sh
+./configure
+make -j$(nproc)
+```
+
+**2. Register `pd-mcp` with Claude Code:**
+
+```sh
+claude mcp add pure-vibes /path/to/pure-vibes/bin/pd-mcp
+```
+
+Replace `/path/to/pure-vibes` with the actual path to your clone (e.g. `~/dev/pure-vibes`).
+
+**3. Launch Pure Vibes with MCP enabled:**
+
+```sh
+/path/to/pure-vibes/bin/pd -mcpport 4330
+```
+
+Or headless (no GUI), passing a patch to load:
+
+```sh
+/path/to/pure-vibes/bin/pd -nogui -mcpport 4330 -send "pd dsp 1" mypatch.pd
+```
+
+**4. Start Claude Code** in your project directory:
+
+```sh
+claude
+```
+
+The `pure-vibes` MCP server will connect automatically. You can verify with `/mcp` and then ask Claude to build patches:
+
+> "Using Pure Vibes, build me a waves-on-a-beach ambient sound patch"
+
+</details>
+
+<details>
+<summary><strong>Linux setup — remote control via Claude Desktop on Mac/Windows</strong></summary>
+
+You can also run **Pure Vibes on your Linux machine** and control it via **Claude Desktop on a Mac or Windows machine** on the same local network.
 
 **On the Linux machine:**
 
