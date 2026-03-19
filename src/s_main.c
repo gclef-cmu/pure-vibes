@@ -412,6 +412,24 @@ int sys_main(int argc, const char **argv)
         sys_loadpreferences(prefsfile, 1);  /* args to override prefs */
     if (sys_argparse(argc-1, argv+1))           /* parse cmd line args */
         return (1);
+    if (sys_verbose || sys_version) fprintf(stderr, "%s compiled %s %s\n",
+        pd_version, pd_compiletime, pd_compiledate);
+    if (sys_verbose)
+        fprintf(stderr, "float precision = %lu bits\n", sizeof(t_float)*8);
+    if (sys_version)    /* if we were just asked our version, exit here. */
+    {
+        fflush(stderr);
+        return (0);
+    }
+    sys_setsignalhandlers();
+    sys_init_paths();   /* set paths before starting GUI which wants them */
+    if (!sys_dontstartgui &&
+        sys_startgui(sys_libdir->s_name))  /* start the gui */
+            return (1);
+    if (sys_listplease)
+        sys_listdevs();
+    sys_init_midi();
+    sys_init_audio();
         /* start MCP server by default unless -nomcp was given */
     if (sys_mcp && !mcp_is_running())
         mcp_start(MCP_DEFAULT_PORT, 1);
@@ -432,24 +450,6 @@ int sys_main(int argc, const char **argv)
         mcp_register_with_agent(pd_mcp_path, "Claude Desktop", 0);
 #endif
     }
-    if (sys_verbose || sys_version) fprintf(stderr, "%s compiled %s %s\n",
-        pd_version, pd_compiletime, pd_compiledate);
-    if (sys_verbose)
-        fprintf(stderr, "float precision = %lu bits\n", sizeof(t_float)*8);
-    if (sys_version)    /* if we were just asked our version, exit here. */
-    {
-        fflush(stderr);
-        return (0);
-    }
-    sys_setsignalhandlers();
-    sys_init_paths();   /* set paths before starting GUI which wants them */
-    if (!sys_dontstartgui &&
-        sys_startgui(sys_libdir->s_name))  /* start the gui */
-            return (1);
-    if (sys_listplease)
-        sys_listdevs();
-    sys_init_midi();
-    sys_init_audio();
          /* load dynamic libraries specified with "-lib" args */
     if (sys_oktoloadfiles(0) || noprefs)
     {

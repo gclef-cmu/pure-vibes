@@ -25,8 +25,12 @@
 #define PATH_SEP '/'
 #endif
 
-/* forward declaration from Pd */
+/* forward declarations from Pd */
 extern void post(const char *fmt, ...);
+extern void logpost(const void *object, const int level, const char *fmt, ...);
+#define PD_ERROR 1
+#define PD_NORMAL 2
+#define PD_DEBUG 3
 
 /* ── helpers ────────────────────────────────────────────────────── */
 
@@ -167,8 +171,9 @@ int mcp_register_with_agent(const char *pd_mcp_path, const char *agent_name,
         free(file_data);
         if (!root)
         {
-            post("Pure Vibes: warning — %s config exists but is not valid JSON, "
-                 "skipping auto-registration", agent_name);
+            logpost(NULL, PD_ERROR,
+                "Pure Vibes: %s config exists but is not valid JSON, "
+                "skipping auto-registration", agent_name);
             return -1;
         }
     }
@@ -188,7 +193,10 @@ int mcp_register_with_agent(const char *pd_mcp_path, const char *agent_name,
     entry = cJSON_GetObjectItemCaseSensitive(servers, server_name);
     if (entry)
     {
-        /* already registered — silent, no action needed */
+        /* already registered */
+        logpost(NULL, PD_DEBUG,
+            "Pure Vibes: already registered with %s (%s)",
+            agent_name, config_path);
         cJSON_Delete(root);
         return 0;
     }
@@ -204,13 +212,15 @@ int mcp_register_with_agent(const char *pd_mcp_path, const char *agent_name,
     {
         if (write_file(config_path, json_out, strlen(json_out)) == 0)
         {
-            post("Pure Vibes registered with %s using configuration %s",
+            logpost(NULL, PD_NORMAL,
+                "Pure Vibes registered with %s using configuration %s",
                 agent_name, config_path);
             result = 1;
         }
         else
         {
-            post("Pure Vibes: error — could not write %s", config_path);
+            logpost(NULL, PD_ERROR,
+                "Pure Vibes: could not write %s", config_path);
         }
         free(json_out);
     }
