@@ -22,9 +22,16 @@ Launch Pd-vibes. The MCP server starts automatically, and Pd-vibes will attempt 
 
 ### 2. Install Claude Desktop
 
-If you haven't already, download and install [Claude Desktop](https://code.claude.com/docs/en/desktop-quickstart#install).
+If you haven't already:
 
-If Claude Desktop was already running when you first launched Pd-vibes, **fully quit and re-open it** (macOS: **Cmd+Q**, Windows: **File > Quit**) so it picks up the new configuration.
+1. Download and install [Claude Desktop](https://claude.ai/download).
+2. Create a free account (or sign in if you already have one).
+3. Once signed in, go to a new chat.
+4. **Choose a model:** If you're on a free account, select **Sonnet 4.6** with **Extended thinking** enabled (see below). If you have a paid account, select **Opus 4.6** with **Extended thinking** for the best results.
+
+<img src="static/sonnet_extended.png" alt="Select Sonnet 4.6 with Extended thinking enabled" width="280" />
+
+If Claude Desktop was already running when you first launched Pd-vibes, **fully quit and re-open it** (macOS: **Cmd+Q**, Windows: **File > Quit**) so it picks up the new MCP configuration.
 
 To verify the connection: ask Claude _"Can you see the Pure Vibes MCP tools?"_ or go to **Settings > Developer** in Claude Desktop.
 
