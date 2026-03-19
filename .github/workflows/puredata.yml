@@ -29,7 +29,7 @@ jobs:
       - name: Build
         run: |
           LIBTOOLIZE=$(brew --prefix libtool)/bin/glibtoolize ./autogen.sh
-          ./configure
+          ./configure CFLAGS="-O2 -DPD_VIBES_RELEASE"
           make -j$(sysctl -n hw.logicalcpu)
 
       - name: Create app bundle
@@ -60,7 +60,7 @@ jobs:
       - name: Build
         run: |
           ./autogen.sh
-          ./configure --prefix=/usr
+          ./configure --prefix=/usr CFLAGS="-O2 -DPD_VIBES_RELEASE"
           make -j$(nproc)
 
       - name: Package
@@ -102,7 +102,7 @@ jobs:
       - name: Build
         run: |
           ./autogen.sh
-          ./configure
+          ./configure CFLAGS="-O2 -DPD_VIBES_RELEASE"
           make -j$(nproc)
 
       - name: Package

@@ -7,6 +7,7 @@
 #include "s_stuff.h"
 #include "s_net.h"
 #include "mcp/mcp_server.h"
+#include "mcp/mcp_register.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -63,6 +64,7 @@ static int sys_dontstartgui;
 int sys_hipriority = -1;    /* -1 = not specified; 0 = no; 1 = yes */
 int sys_guisetportnumber;   /* if started from the GUI, this is the port # */
 int sys_nosleep = 0;  /* skip all "sleep" calls and spin instead */
+static int sys_mcp = 1;  /* auto-start MCP on boot; cleared by -nomcp */
 int sys_defeatrt;       /* flag to cancel real-time */
 t_symbol *sys_flags;    /* more command-line flags */
 
@@ -410,6 +412,26 @@ int sys_main(int argc, const char **argv)
         sys_loadpreferences(prefsfile, 1);  /* args to override prefs */
     if (sys_argparse(argc-1, argv+1))           /* parse cmd line args */
         return (1);
+        /* start MCP server by default unless -nomcp was given */
+    if (sys_mcp && !mcp_is_running())
+        mcp_start(MCP_DEFAULT_PORT, 1);
+        /* auto-register with Claude Desktop (macOS / Windows only) */
+    if (sys_mcp)
+    {
+        char pd_mcp_path[MAXPDSTRING];
+#ifdef _WIN32
+        snprintf(pd_mcp_path, MAXPDSTRING, "%s/bin/pd-mcp.exe",
+            sys_libdir->s_name);
+#else
+        snprintf(pd_mcp_path, MAXPDSTRING, "%s/bin/pd-mcp",
+            sys_libdir->s_name);
+#endif
+#ifdef PD_VIBES_RELEASE
+        mcp_register_with_agent(pd_mcp_path, "Claude Desktop", 1);
+#else
+        mcp_register_with_agent(pd_mcp_path, "Claude Desktop", 0);
+#endif
+    }
     if (sys_verbose || sys_version) fprintf(stderr, "%s compiled %s %s\n",
         pd_version, pd_compiletime, pd_compiledate);
     if (sys_verbose)
@@ -586,9 +608,9 @@ static char *(usagemessage[]) = {
 "-autopatch       -- enable auto-patching to new objects (true by default)\n",
 "-noautopatch     -- defeat auto-patching\n",
 "-compatibility <f> -- set back-compatibility to version <f>\n",
-"-mcpport <n>     -- set MCP server port (default: 4330) and enable MCP\n",
+"-mcpport <n>     -- set MCP server port (default: 4330)\n",
 "-mcpnetwork      -- allow MCP connections from network (default: localhost)\n",
-"-nomcp           -- disable MCP server\n",
+"-nomcp           -- disable MCP server (enabled by default)\n",
 };
 
 static void sys_printusage(void)
@@ -1452,6 +1474,7 @@ int sys_argparse(int argc, const char **argv)
         }
         else if (!strcmp(*argv, "-nomcp"))
         {
+            sys_mcp = 0;
             mcp_stop();
             argc--; argv++;
         }

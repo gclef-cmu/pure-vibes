@@ -196,6 +196,7 @@ pd_SOURCES_core = \
     mcp/mcp_server.c \
     mcp/mcp_tools.c \
     mcp/mcp_audio.c \
+    mcp/mcp_register.c \
     mcp/cJSON.c \
     $(empty)
 
@@ -216,7 +217,7 @@ include_HEADERS = m_pd.h
 noinst_HEADERS = s_audio_alsa.h s_audio_paring.h s_utf8.h m_private_utils.h
 noinst_HEADERS += z_hooks.h z_ringbuffer.h x_libpdreceive.h
 noinst_HEADERS += m_dispatch.h d_osc.h
-noinst_HEADERS += mcp/mcp_server.h mcp/mcp_tools.h mcp/mcp_audio.h mcp/cJSON.h
+noinst_HEADERS += mcp/mcp_server.h mcp/mcp_tools.h mcp/mcp_audio.h mcp/mcp_register.h mcp/cJSON.h
 
 if LIBPD
 libpdinclude_HEADERS += m_pd.h z_libpd.h

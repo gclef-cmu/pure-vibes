@@ -1,55 +1,60 @@
 # Pure Vibes (Pd-vibes)
 
-**Pure Vibes is an unofficial, experimental fork of [Pure Data](https://puredata.info) with added functionality for agentic AI usage**. It is vibe-coded and intended for experimental use only. It is not affiliated with or endorsed by Miller Puckette or the Pure Data community.
+**Pure Vibes is an experimental, lightweight extension to [Pure Data](https://puredata.info) allowing for AI agent control.** It is vibe-coded and intended for experimental use only. It is not affiliated with or endorsed by Miller Puckette or the Pure Data community.
 
 Pure Vibes integrates a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) directly into Pure Data, allowing AI agents (Claude, ChatGPT, etc.) to read, create, and manipulate Pd patches in real time. Once Pure Vibes is installed on your machine and registered w/ your AI agent, you can ask it to do things in natural language like "explain this patch I'm working on" or "build me a new 8 voice FM osc patch w/ real-time MIDI control".
 
 ---
 
-## Quick Start
+## Quick Start with Claude Desktop (macOS / Windows)
 
-### 1. Install Pd-vibes
+### 1. Install and launch Pd-vibes
 
 Download the latest release for your platform from the **[Releases](../../releases)** tab:
 
-- **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications. On first launch, macOS may warn that it "can't check the app for malicious software." Right-click the app, choose **Open**, then click **Open** again to bypass this.
+- **macOS**: Download `Pd-vibes-macos.zip`, unzip, drag `Pd-vibes.app` to Applications.
+  - On first launch, macOS may warn that it "can't check the app for malicious software."
+  - Right-click the app in Finder, choose **Open**, then click **Open** again to bypass this.
+  - Alternatively, go to **System Settings > Privacy & Security**, scroll down to the Security section, and click **Open Anyway** next to the Pd-vibes message.
 - **Windows**: Download `Pd-vibes-windows-x86_64.tar.gz`, extract, run `bin\pd.exe`
-- **Linux**: Download `Pd-vibes-linux-x86_64.tar.gz`, extract, run `bin/pd`
 
-Launch Pd-vibes. You will see an "MCP" checkbox in the main window (next to DSP). It is off by default. Enable it when you want AI tools to connect.
+Launch Pd-vibes. The MCP server starts automatically, and Pd-vibes will attempt to automatically register itself in your Claude Desktop configuration file.
 
-### 2. Connect to AI agent
+### 2. Install Claude Desktop
 
-Download and install [Claude Desktop](https://code.claude.com/docs/en/desktop-quickstart#install). Other agents that support MCP will work as well with similar instructions.
+If you haven't already, download and install [Claude Desktop](https://code.claude.com/docs/en/desktop-quickstart#install).
 
-**macOS — easy setup (recommended):**
+If Claude Desktop was already running when you first launched Pd-vibes, **fully quit and re-open it** (macOS: **Cmd+Q**, Windows: **File > Quit**) so it picks up the new configuration.
 
-Open the **Terminal** app (find it in Applications > Utilities, or search with Spotlight), paste this command, and press Enter:
+To verify the connection: ask Claude _"Can you see the Pure Vibes MCP tools?"_ or go to **Settings > Developer** in Claude Desktop.
 
-```sh
-mkdir -p ~/Library/Application\ Support/Claude && echo '{
-  "mcpServers": {
-    "Pure Vibes": {
-      "command": "/Applications/Pd-vibes.app/Contents/Resources/bin/pd-mcp"
-    }
-  }
-}' > ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
+### 3. Try it out
 
-> **Note:** This will replace an existing Claude config file. If you already use other MCP servers with Claude, see the manual setup below instead.
+Ask Claude:
 
-Then **fully quit and re-open Claude Desktop** using **Cmd+Q** (just closing the window isn't enough). After restarting, Pure Vibes should appear as a connected MCP server.
+> "Using Pure Vibes, build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
 
-<details>
-<summary><strong>macOS — manual setup</strong> (if you already have a Claude config file)</summary>
+Claude will use the MCP tools to create objects, wire them together, and you will see the patch build itself in real time.
 
-Open this file in a text editor (create it if it doesn't exist):
+Other things to try:
 
-`~/Library/Application Support/Claude/claude_desktop_config.json`
+> "What patches do I have open?"
+
+> "Turn on DSP"
+
+> "Add a reverb to my patch"
+
+---
+
+## Other Installation Methods
+
+### Manual Claude Desktop registration
+
+If auto-registration doesn't work or you want custom configuration (e.g. a different port or pointing at a remote machine), edit the Claude Desktop config file directly.
+
+**macOS** — `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 > **Tip:** In Finder, press **Cmd+Shift+G** and paste `~/Library/Application Support/Claude/` to open the folder.
-
-Add the Pure Vibes entry to `"mcpServers"`:
 
 ```json
 {
@@ -61,14 +66,7 @@ Add the Pure Vibes entry to `"mcpServers"`:
 }
 ```
 
-Fully quit and re-open Claude Desktop (**Cmd+Q**).
-
-</details>
-
-<details>
-<summary><strong>Windows setup</strong></summary>
-
-Edit `%APPDATA%\Claude\claude_desktop_config.json` (create it if it doesn't exist):
+**Windows** — `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
 {
@@ -80,12 +78,9 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json` (create it if it doesn't exis
 }
 ```
 
-Fully quit and re-open Claude Desktop (File > Quit).
+Fully quit and re-open Claude Desktop after saving the config.
 
-</details>
-
-<details>
-<summary><strong>Linux setup — Claude Code (recommended)</strong></summary>
+### Linux with Claude Code
 
 [Claude Code](https://claude.ai/code) is Anthropic's official CLI and runs natively on Linux, making it the easiest way to use Pure Vibes on Linux.
 
@@ -107,16 +102,16 @@ claude mcp add pure-vibes /path/to/pure-vibes/bin/pd-mcp
 
 Replace `/path/to/pure-vibes` with the actual path to your clone (e.g. `~/dev/pure-vibes`).
 
-**3. Launch Pure Vibes with MCP enabled:**
+**3. Launch Pure Vibes** (MCP starts automatically):
 
 ```sh
-/path/to/pure-vibes/bin/pd -mcpport 4330
+/path/to/pure-vibes/bin/pd
 ```
 
 Or headless (no GUI), passing a patch to load:
 
 ```sh
-/path/to/pure-vibes/bin/pd -nogui -mcpport 4330 -send "pd dsp 1" mypatch.pd
+/path/to/pure-vibes/bin/pd -nogui -send "pd dsp 1" mypatch.pd
 ```
 
 **4. Start Claude Code** in your project directory:
@@ -129,16 +124,13 @@ The `pure-vibes` MCP server will connect automatically. You can verify with `/mc
 
 > "Using Pure Vibes, build me a waves-on-a-beach ambient sound patch"
 
-</details>
+### Remote control (Pd on Linux, Claude Desktop on Mac/Windows)
 
-<details>
-<summary><strong>Linux setup — remote control via Claude Desktop on Mac/Windows</strong></summary>
-
-You can also run **Pure Vibes on your Linux machine** and control it via **Claude Desktop on a Mac or Windows machine** on the same local network.
+You can run **Pure Vibes on a Linux machine** and control it via **Claude Desktop on a Mac or Windows machine** on the same local network.
 
 **On the Linux machine:**
 
-1. Launch Pd-vibes and enable MCP (check the "MCP" box in the main window).
+1. Launch Pd-vibes (MCP starts automatically).
 2. Allow network connections — in the Media menu, enable **MCP Allow Network** (or launch with `-mcpnetwork`). This lets Claude Desktop reach Pd-vibes from another machine.
 3. Note your Linux machine's local IP address (e.g. `192.168.1.42`) — you'll need it in the next step.
 
@@ -176,24 +168,6 @@ Replace `192.168.1.42` with your Linux machine's actual IP address. If you chang
 
 Fully quit and re-open Claude Desktop after saving the config.
 
-</details>
-
-### 3. Try it out
-
-Open Pd-vibes, click to enable "MCP" in the main window, then ask Claude:
-
-> "Using Pure Vibes, build me a simple synthesizer in Pure Data with an oscillator, envelope, and volume control"
-
-Claude will use the MCP tools to create objects, wire them together, and you will see the patch build itself in real time.
-
-Other things to try:
-
-> "What patches do I have open?"
-
-> "Turn on DSP"
-
-> "Add a reverb to my patch"
-
 ---
 
 ## Pure Data tools exposed by the MCP
@@ -222,15 +196,16 @@ The built-in MCP server exposes 24 tools:
 Pd-vibes supports two MCP connection modes:
 
 - **Claude Desktop via stdio proxy**: Point Claude at `pd-mcp`. The proxy speaks stdio to Claude and forwards tool calls to Pd-vibes over HTTP on localhost.
-- **Direct Streamable HTTP**: Pd-vibes listens on `http://localhost:4330/mcp` when MCP is enabled. Any MCP client that supports Streamable HTTP can connect directly.
+- **Direct Streamable HTTP**: Pd-vibes listens on `http://localhost:4330/mcp` when MCP is enabled. Any MCP client that supports Streamable HTTP should be able to connect directly, though this has not been extensively tested.
 
 ### MCP Configuration
 
 - **Toggle**: Check/uncheck "MCP" in the main Pd window, or use the Media menu
 - **Port**: Media > MCP Port... (default: 4330). CLI: `-mcpport 4331`
 - **Network**: Media > MCP Allow Network (default: localhost only). CLI: `-mcpnetwork`
-- **Default state**: MCP is off until you enable it via the checkbox or `-mcpport`
-- **Disable**: Uncheck "MCP" or start with `-nomcp`
+- **Default state**: MCP is on by default (port 4330, localhost only)
+- **Disable**: Uncheck "MCP" in the main window, or start with `-nomcp`
+- **Auto-registration**: On macOS and Windows, Pd-vibes automatically registers itself with Claude Desktop on first launch. Build-from-source installs register as "Pure Vibes (Dev)"
 
 ---
 
